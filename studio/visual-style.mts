@@ -7,12 +7,12 @@ export function cssPropertyName(key) {
   return key.replace(/[A-Z]/g, c => `-${c.toLowerCase()}`).replace(/^webkit-/, '-webkit-');
 }
 
-export function normalizeVisualCss(css) {
+export function normalizeVisualCss(css: any): Record<string, string> {
   if (css == null) return {};
   if (typeof css !== 'object' || Array.isArray(css)) {
     throw Object.assign(new Error('css 必须是 CSS 属性和值组成的对象'), { code: 'E_CSS_VALUE', field: 'css' });
   }
-  const out = {};
+  const out: Record<string, string> = {};
   for (const [key, value] of Object.entries(css)) {
     const property = cssPropertyName(key);
     if (!/^(?:--[\w-]+|-?[a-z][a-z0-9-]*)$/.test(property)) {
@@ -47,7 +47,7 @@ function gradientCss(value) {
 }
 
 export function visualCss(node) {
-  const css = {};
+  const css: Record<string, string> = {};
   const backgrounds = [];
   if (node.noise) {
     const alpha = Math.min(1, Math.max(0, Number(node.noise)));

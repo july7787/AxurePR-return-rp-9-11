@@ -14,9 +14,19 @@ export const DEFAULT_VERSION = 11;
 export const MAGIC0 = 0xac;
 export const MAGIC1 = 0xef;
 
+interface VersionSpec {
+  version: number;
+  label: string;
+  appPath: string;
+  bundleId: string;
+  processName: string;
+  templateEnv: string;
+  defaultTemplate: string;
+}
+
 function spec(version) {
   const v = Number(version);
-  const table = {
+  const table: Record<number, VersionSpec> = {
     9: {
       version: 9,
       label: 'Axure RP 9',
@@ -117,7 +127,7 @@ export function runningVersions() {
 
 // 宿主绑定：显式指定 > AXURE_TARGET_VERSION > 唯一在跑的 Axure > 报错。
 // 双版本并行时「第一个名字含 Axure 的进程」会选错程序，所以这里不猜。
-export function resolvePasteTarget({ version, bundleId } = {}) {
+export function resolvePasteTarget({ version, bundleId }: { version?: number | string; bundleId?: string } = {}) {
   if (bundleId) {
     const hit = supportedVersions().find(v => spec(v).bundleId === bundleId);
     if (!hit) throw new Error(`Unknown Axure bundle id "${bundleId}". Known: ${supportedVersions().map(v => spec(v).bundleId).join(', ')}`);
