@@ -33,6 +33,8 @@
 | :--- | :--- |
 | A screenshot, a brief, a PRD, or RP/1 source | A native `.rp`, a browser preview, HTML / CSS / JS export, and verification reports |
 
+**AI drafts, you decide:**
+
 | AI drafts | You refine | Native delivery |
 | :--- | :--- | :--- |
 | Generate multi-page flows from natural language or RP/1, then change specific layers and topics. | Double-click text, marquee-select, drag, measure and undo in Studio. | Text, buttons and inputs stay separate widgets you can keep editing in Axure. |
