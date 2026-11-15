@@ -118,7 +118,7 @@ page #notes name="手记" device=iphone-17-pro
 | 原生 `.rp` | 默认目标 RP 11；`target=9` 或 `AXURE_TARGET_VERSION=9` 切到 RP 9 |
 | 浏览器预览 | 真实交互场景，可复现点击、跳转与状态变化 |
 | 代码导出 | 独立 HTML / CSS / JS，便于评审或嵌入 |
-| 结构与验收报告 | 三零检查、浏览器断言与 Axure 往返结果分开记录 |
+| 结构与验收报告 | 三零检查（未解析记录、悬空引用、问题数均为 0）、浏览器断言与 Axure 往返结果分开记录 |
 
 [原生导出与回填](docs/studio-native-roundtrip.md)　↗　[代码导出](docs/studio-code-export.md)
 

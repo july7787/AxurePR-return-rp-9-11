@@ -118,7 +118,7 @@ Generate a native **`.rp`** and continue editing supported text, controls and la
 | Native `.rp` | Targets RP 11 by default; use `target=9` or `AXURE_TARGET_VERSION=9` for RP 9 |
 | Browser preview | Real interaction scenarios with clicks, navigation and state changes |
 | Code export | Standalone HTML / CSS / JS for review or embedding |
-| Structure and acceptance reports | Zero-error checks, browser assertions and Axure roundtrips recorded separately |
+| Structure and acceptance reports | Zero-error checks (zero unparseable records, dangling references and problems), browser assertions and Axure roundtrips recorded separately |
 
 [Native export and sync](docs/studio-native-roundtrip.md)　↗　[Code export](docs/studio-code-export.md)
 
