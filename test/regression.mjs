@@ -157,9 +157,14 @@ try {
   });
   check('source baseline fingerprints match every registered script', () => {
     const baseline = JSON.parse(readFileSync(join(root, 'test/baseline-shas.json')));
-    for (const [file, hash] of Object.entries(baseline))
-      assert.equal(createHash('sha256').update(readNormalized(join(root, 'scripts', file))).digest('hex'), hash, file);
-    assert.equal(Object.keys(baseline).length, readdirSync(join(root, 'scripts')).filter(f => f.endsWith('.mjs')).length);
+    for (const [file, hash] of Object.entries(baseline)) {
+      const js = join(root, 'scripts', file);
+      const ts = js.replace(/\.mjs$/, '.mts');
+      assert.equal(createHash('sha256').update(readNormalized(existsSync(ts) ? ts : js)).digest('hex'), hash, file);
+    }
+    // .mts 源与其生成的 .mjs 是同一条目，按 .mjs 名去重计数。
+    const scripts = readdirSync(join(root, 'scripts')).filter(f => f.endsWith('.mjs') || f.endsWith('.mts'));
+    assert.equal(Object.keys(baseline).length, new Set(scripts.map(f => f.replace(/\.mts$/, '.mjs'))).size);
   });
 } finally { rmSync(work, { recursive: true, force: true }); }
 const failed = results.filter(r => !r.passed).length;

@@ -5,6 +5,7 @@
 - 仓库更名为 `AxurePR-return-rp`，便于按 Axure / AxurePR 搜索；旧地址由 GitHub 重定向。
 - README 中英文重做：新增 30 秒概览、与通用 UI 生成器的对比、端到端工作流插图、RP 9 / RP 11 能力表、Windows 安装步骤、常见问题与项目结构；更新徽章、克隆地址与 MCP 配置路径。
 - 同步更新贡献指南、`package.json` 仓库地址与原生自定义样式文档中的 issue 链接。
+- 引入 TypeScript 构建链（`build.mjs` / `tsconfig.json`）：首批 `version*.mts` 与 Studio 共享模块改为 `.mts` 源，编译为同路径 `.mjs`，运行时入口、CLI 与文档引用保持不变；`npm install` 自动构建，CI 校验生成物未过期。
 
 ## 1.3.4 — 2026-11-14
 

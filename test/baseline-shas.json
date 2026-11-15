@@ -32,7 +32,7 @@
   "native-forms.mjs": "3d5bc729d0e371c4e7e25de2893ffd2210ffd14ec6c7e1341d6b52262376a9c5",
   "native-repeater.mjs": "2b2da0ecff485b4c7d919953434c51a15dd301fb17ef327eebc2a5bf80255376",
   "native-scene.mjs": "3985e3d5db933024d06cde94999eb66b86d811684ca503e880199624e1b186b8",
-  "pack-release.mjs": "595e73c06c5715b389cdb40eacb7b7722b158715bf8be926e5fb14229c63a75d",
+  "pack-release.mjs": "f18777247e4a3003e2ac76aeb65cb76250e83daafd094c54f2de5d48ac1ede36",
   "parse-payload.mjs": "1af649fec86371773de781894b3d12f9c4e2540d880c2bb05f47e340725807ac",
   "patch-link-window.mjs": "08359f021e52d65a68dc1c30a4da61cd7a591ca27a03e4a537438b74f6149e6c",
   "patch-string.mjs": "34178259e69ab8354539fd82546098fa396a8f560084892da9cd006f3c0b8446",
@@ -62,6 +62,6 @@
   "version-capabilities.mjs": "687fd1bf96085559029ee8a34268cf287a68ccf6bc724f50ca6dd154c6f2bcf7",
   "version-fields.mjs": "65e9d22c45d8537dc216dba6a0bc6c1f52855edeb56d7eca9263145675d74d1b",
   "version-lint.mjs": "5e4fd415df81d99a6798ad65b79854b69dfa2b86c32992c07c14547436dee490",
-  "version.mjs": "3e89181a9bbaba29e700347b7b74a5d6b27ea4e8e7b54aa428e9a1754986c4b0",
+  "version.mjs": "72fedcb61b9112e04cbc05b77999e919909017a4fa9147f35adc6bdf67f0c70d",
   "widget-schema.mjs": "fd9e6a96850855af27af3f8c9b485defe0641aec16f3185f16847dfd21a763b6"
 }

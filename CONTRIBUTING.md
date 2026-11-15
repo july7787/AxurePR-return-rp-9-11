@@ -2,8 +2,12 @@
 
 Install README dependencies and keep the Python environment activated when running Node wrappers. Write new output paths and preserve original `.rp` inputs.
 
+JavaScript runtime files are generated from TypeScript sources (`*.mts`, `studio/web/*.ts`). Edit the TypeScript source, not the generated `*.mjs` / `app.js`; `npm install` runs `npm run build`, and CI rejects stale generated files.
+
 | Command | Prerequisites |
 | --- | --- |
+| `npm run build` | TypeScript; rewrites the runtime `.mjs` / `.js` files from `*.mts` sources. |
+| `npm run typecheck` | TypeScript; type-checks sources without writing outputs. |
 | `npm test` | Node; no Axure/Python/private fixtures. Source syntax, registry, guards, examples and source packaging. |
 | `npm run test:styles` | Node; synthetic RP/RPLIB style fixtures, no Axure/Python/private files. |
 | `npm run test:polish` | Python + Pillow; real expansion/layout/Axvg alpha and alignment regressions, no Axure. |

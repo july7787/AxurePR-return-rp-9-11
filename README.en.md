@@ -289,6 +289,8 @@ RP 11. Use `target=9` in the RP/1 header or `AXURE_TARGET_VERSION=9` for RP 9. B
 | `test/` | Structure, browser, version-parity and cross-platform regression |
 | `docs/` | Design workflow, acceptance layers and version parity |
 
+Node sources are TypeScript (`*.mts` / `studio/web/*.ts`); `npm run build` emits the runtime `.mjs` / `.js` files at the same paths. Both sources and generated runtime are included in the repository and release archives, so using the project requires no build step.
+
 <br>
 
 ---

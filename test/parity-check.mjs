@@ -218,8 +218,14 @@ for (const rel of ['scripts/registry.mjs', 'scripts/engine.mjs', 'bin/axure.mjs'
   try {
     const baseline = JSON.parse(readFileSync(BASELINE, 'utf8'));
     const names = Object.keys(baseline);
+    // 迁移到 TypeScript 的脚本以 .mts 为源；未迁移的仍直接读取 .mjs。
+    const sourceOf = n => {
+      const js = join(SCRIPTS, n);
+      const ts = js.replace(/\.mjs$/, '.mts');
+      return existsSync(ts) ? ts : js;
+    };
     const mismatched = names.filter(n => {
-      try { return sourceSha256(join(SCRIPTS, n)) !== baseline[n]; } catch { return true; }
+      try { return sourceSha256(sourceOf(n)) !== baseline[n]; } catch { return true; }
     });
     passed = names.length === EXPECTED_SCRIPT_COUNT && mismatched.length === 0;
     detail = `清单 ${names.length} 项${mismatched.length ? `，不符：${mismatched.join('、')}` : ''}`;

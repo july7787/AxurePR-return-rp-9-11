@@ -13,6 +13,9 @@
     "node": ">=18"
   },
   "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepare": "npm run build",
     "test": "node test/regression.mjs",
     "test:native": "node test/native-check.mjs",
     "test:parity": "node test/parity-check.mjs",
@@ -87,6 +90,8 @@
     "README.md",
     "README.zh-CN.md",
     "SKILL.md",
+    "build.mjs",
+    "tsconfig.json",
     "assets/dashboard-example.spec.json",
     "assets/demo-layout.svg",
     "assets/mobile-primitives/README.md",
@@ -309,9 +314,12 @@
     "scripts/trim-to-single-page.mjs",
     "scripts/version-adapt.mjs",
     "scripts/version-capabilities.mjs",
+    "scripts/version-capabilities.mts",
     "scripts/version-fields.mjs",
+    "scripts/version-fields.mts",
     "scripts/version-lint.mjs",
     "scripts/version.mjs",
+    "scripts/version.mts",
     "scripts/widget-schema.mjs",
     "studio/anchors.mjs",
     "studio/axure-preview.mjs",
@@ -345,6 +353,7 @@
     "studio/text-shaping.swift",
     "studio/typography.mjs",
     "studio/visual-style.mjs",
+    "studio/visual-style.mts",
     "studio/web/app.js",
     "studio/web/index.html",
     "studio/web/styles.css",
@@ -533,6 +542,7 @@
     "docs/studio-stages.md",
     "benchmarks/studio/README.md",
     "studio/schema-validation.mjs",
+    "studio/schema-validation.mts",
     "examples/studio/reference-packs/field-ledger-web/source.json",
     "examples/studio/reference-packs/field-ledger-web/manifest.json",
     "examples/studio/reference-packs/daily-margin-mobile/source.json",
@@ -554,6 +564,7 @@
     "studio/document-diff.mjs",
     "test/studio-versions-check.mjs",
     "studio/bounded-cache.mjs",
+    "studio/bounded-cache.mts",
     "studio/selection.mjs",
     "test/studio-selection-check.mjs",
     "docs/studio-versions.md",
@@ -620,5 +631,9 @@
     "url": "https://github.com/karlmoriaty/AxurePR-return-rp/issues",
     "email": "3070687583@qq.com"
   },
-  "homepage": "https://github.com/karlmoriaty/AxurePR-return-rp"
+  "homepage": "https://github.com/karlmoriaty/AxurePR-return-rp",
+  "devDependencies": {
+    "@types/node": "^18.19.130",
+    "typescript": "^5.9.3"
+  }
 }
