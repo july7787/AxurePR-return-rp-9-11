@@ -10,20 +10,18 @@ import { readRp } from '../scripts/rp-read.mjs';
 import { readRecords } from '../scripts/rp-records.mjs';
 import { field, parsePayload } from '../scripts/parse-payload.mjs';
 import { nativeTemplateSkipReason } from './host-capabilities.mjs';
-
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const source = join(root, 'examples/rp-language/native-forms.rp1');
 const work = mkdtempSync(join(tmpdir(), 'rp1-native-forms-check-'));
 let checks = 0;
 const check = (name, run) => { run(); checks++; console.log('PASS ' + name); };
 const run = (command, args) => {
-  const result = spawnSync(command, args, { cwd: root, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
-  assert.equal(result.status, 0, (result.stderr || '') + result.stdout);
-  return JSON.parse(result.stdout);
+    const result = spawnSync(command, args, { cwd: root, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
+    assert.equal(result.status, 0, (result.stderr || '') + result.stdout);
+    return JSON.parse(result.stdout);
 };
-
 try {
-  const semantics = run('python3', ['-c', `
+    const semantics = run('python3', ['-c', `
 import copy,json,sys
 sys.path.insert(0,${JSON.stringify(join(root, 'scripts'))})
 from rp_language_cli import read_source
@@ -120,109 +118,112 @@ assert selected_widget['checked'] is True and selected_widget['selected'] is Tru
 boundaries={'radio_peer_change':peer.variables['changed'],'selected_only_checked':selected_widget['checked']}
 print(json.dumps({'symbols':ir['symbols'],'tabs':tabs,'query':match,'negative':negative,'boundaries':boundaries,'pages':len(ir['pages'])},ensure_ascii=False))
 `]);
-  check('RP/1 native form reference behavior, selection groups, query and reset', () => {
-    assert.deepEqual(semantics.tabs, [false, false, true]);
-    assert.equal(semantics.pages, 4);
-    assert.equal(Object.keys(semantics.negative).length, 4);
-  });
-  check('radio peer callbacks and checked/selected initialization stay consistent', () => {
-    assert.equal(semantics.boundaries.radio_peer_change, true);
-    assert.equal(semantics.boundaries.selected_only_checked, true);
-    assert.equal(semantics.negative.conflicting_checked_selected, 'E_PROPERTY');
-  });
-
-  const skip = nativeTemplateSkipReason();
-  if (skip) {
-    console.log(JSON.stringify({ ok: true, checks, native: 'skipped', reason: skip }));
-  } else {
-    const output = join(work, 'native-forms.rp');
-    const generation = run('node', [join(root, 'scripts/proto.mjs'), 'generate', '--spec', source,
-      '--out-dir', join(work, 'bundle'), '--out-rp', output]);
-    const bytes = readFileSync(output);
-    const summary = readRp(bytes, { path: output });
-    const contexts = readRecords(bytes).filter(r => ['Axure:Page', 'Axure:PanelState'].includes(r.className))
-      .map(record => ({ record, graph: parsePayload(record) }));
-    const names = new Map(semantics.symbols.map(s => [s.id, s.name]));
-    const widget = logical => {
-      const name = names.get(logical);
-      for (const context of contexts) {
-        for (const object of context.graph.objects.values()) {
-          if (object.className.startsWith('Axure:DiagramObject:') && field(field(object.body, 'name-block') ?? {}, 'text')?.text === name)
-            return { ...context, object };
-        }
-      }
-      assert.fail('Missing native widget ' + logical + ' / ' + name);
-    };
-    check('RP9 native output contains every required form type and has three zeros', () => {
-      assert.equal(summary.pages.length, 4);
-      for (const [key, type] of [['input/search', 'TextBox'], ['query/seller_all', 'RadioButton'],
-        ['query/shipping', 'Checkbox'], ['query/price', 'ComboBox'], ['lists/single', 'ListBox'], ['lists/alias', 'ComboBox']])
-        assert.equal(widget(key).object.className, 'Axure:DiagramObject:' + type, key);
-      for (const key of ['danglingRefs', 'sentinelSlotsNonZero', 'problems']) assert.equal(summary.counts[key], 0, key);
-      assert.equal(generation.ok, true);
-      assert.equal(generation.rpBuilt.backend, 'native');
-      assert.equal(generation.rpBuilt.eventCoverage.materialized, generation.rpBuilt.eventCoverage.declared);
-      for (const symbol of generation.rpBuilt.sourceMap.filter(symbol => ['input', 'radio', 'checkbox', 'combobox', 'listbox'].includes(symbol.kind)))
-        assert.equal(symbol.native.length, 1, symbol.id);
+    check('RP/1 native form reference behavior, selection groups, query and reset', () => {
+        assert.deepEqual(semantics.tabs, [false, false, true]);
+        assert.equal(semantics.pages, 4);
+        assert.equal(Object.keys(semantics.negative).length, 4);
     });
-    check('native input stays before its clear button in IDs, definitions and parent layer', () => {
-      const input = widget('input/search'), clear = widget('input/clear');
-      assert.equal(input.record.index, clear.record.index);
-      assert.ok(input.object.id < clear.object.id, 'Native input object ID must precede the clear button');
-      const definitions = [...input.graph.objects.keys()];
-      assert.ok(definitions.indexOf(input.object.id) < definitions.indexOf(clear.object.id),
-        'Native input definition must precede the clear button definition');
-      const layers = [...input.graph.objects.values()].filter(object => object.className === 'Axure:DiagramObject:Layer');
-      const owner = layers.find(layer => {
-        const children = field(layer.body, 'DiagramObjects')?.items.map(item => item.value) ?? [];
-        return children.includes(input.object.id) && children.includes(clear.object.id);
-      });
-      assert.ok(owner, 'Native input and clear button must retain their shared parent Layer');
-      const siblings = field(owner.body, 'DiagramObjects').items.map(item => item.value);
-      assert.ok(siblings.indexOf(input.object.id) < siblings.indexOf(clear.object.id));
-      const mapping = generation.rpBuilt.sourceMap.find(symbol => symbol.id === 'input/search').native[0];
-      assert.equal(mapping.id, input.object.id);
-      assert.equal(mapping.record, input.record.index);
+    check('radio peer callbacks and checked/selected initialization stay consistent', () => {
+        assert.equal(semantics.boundaries.radio_peer_change, true);
+        assert.equal(semantics.boundaries.selected_only_checked, true);
+        assert.equal(semantics.negative.conflicting_checked_selected, 'E_PROPERTY');
     });
-    check('checked state, radio groups, list options and multi-selection are native fields', () => {
-      const all = widget('query/seller_all'), self = widget('query/seller_self');
-      assert.equal(field(all.object.body, 'Selected').value, true);
-      assert.equal(field(self.object.body, 'Selected').value, false);
-      assert.equal(field(all.object.body, 'radio-group').text, field(self.object.body, 'radio-group').text);
-      assert.ok(field(all.object.body, 'radio-group').text);
-      const { graph, object } = widget('lists/multi');
-      assert.equal(field(object.body, 'multiple').value, true);
-      const options = field(object.body, 'list-options').items.map(item => graph.objects.get(item.value));
-      assert.deepEqual(options.map(option => field(option.body, 'object').text), ['一', '二', '三']);
-      assert.deepEqual(options.map(option => field(option.body, 'selected').value), [true, false, true]);
-    });
-    check('style state maps reference real native styles on tabs and the text field', () => {
-      const states = logical => {
-        const { graph, object } = widget(logical);
-        const style = graph.objects.get(field(object.body, 'MyStyle').value);
-        const props = field(style.body, 'PropList').items;
-        const map = field(props.find(prop => (field(prop, 'DOAName').value & 0x3fffffff) === 21), 'Value');
-        assert.ok(map, logical + ' missing native state-style map');
-        for (const [, value] of map.entries) assert.equal(graph.objects.get(value.value)?.className, 'Axure:Style');
-        return map.entries.map(([key]) => key.text);
-      };
-      assert.ok(states('tabs/tab_0').includes('MouseOver'));
-      assert.ok(states('tabs/tab_0').includes('Selected'));
-      assert.ok(states('input/search').includes('Focused'));
-    });
-    check('compiled interactions use native checked and option getter functions', () => {
-      const calls = contexts.flatMap(({ graph }) => [...graph.objects.values()])
-        .filter(object => object.className === 'Axure:Expr:FCall')
-        .map(object => field(object.body, 'function-name')?.text);
-      for (const fn of ['GetCheckState', 'GetSelectedOption', 'SetCheckState', 'SetSelectedOption']) assert.ok(calls.includes(fn), fn);
-      const allWidgets = summary.pages.flatMap(page => page.widgets);
-      const events = logical => allWidgets.find(w => w.name === names.get(logical)).interactions.map(ix => ix.event);
-      assert.ok(events('query/price').includes('OnSelectionChange'));
-      assert.ok(events('query/shipping').includes('OnSelectedChange'));
-    });
-    console.log(JSON.stringify({ ok: true, checks, evidence: 'compiler-reference-model-and-native-serialization',
-      nativeGui: 'requires separate Axure save/reopen and browser verification' }));
-  }
-} finally {
-  rmSync(work, { recursive: true, force: true });
+    const skip = nativeTemplateSkipReason();
+    if (skip) {
+        console.log(JSON.stringify({ ok: true, checks, native: 'skipped', reason: skip }));
+    }
+    else {
+        const output = join(work, 'native-forms.rp');
+        const generation = run('node', [join(root, 'scripts/proto.mjs'), 'generate', '--spec', source,
+            '--out-dir', join(work, 'bundle'), '--out-rp', output]);
+        const bytes = readFileSync(output);
+        const summary = readRp(bytes, { path: output });
+        const contexts = readRecords(bytes).filter(r => ['Axure:Page', 'Axure:PanelState'].includes(r.className))
+            .map(record => ({ record, graph: parsePayload(record) }));
+        const names = new Map(semantics.symbols.map(s => [s.id, s.name]));
+        const widget = logical => {
+            const name = names.get(logical);
+            for (const context of contexts) {
+                for (const object of context.graph.objects.values()) {
+                    if (object.className.startsWith('Axure:DiagramObject:') && field(field(object.body, 'name-block') ?? {}, 'text')?.text === name)
+                        return { ...context, object };
+                }
+            }
+            assert.fail('Missing native widget ' + logical + ' / ' + name);
+        };
+        check('RP9 native output contains every required form type and has three zeros', () => {
+            assert.equal(summary.pages.length, 4);
+            for (const [key, type] of [['input/search', 'TextBox'], ['query/seller_all', 'RadioButton'],
+                ['query/shipping', 'Checkbox'], ['query/price', 'ComboBox'], ['lists/single', 'ListBox'], ['lists/alias', 'ComboBox']])
+                assert.equal(widget(key).object.className, 'Axure:DiagramObject:' + type, key);
+            for (const key of ['danglingRefs', 'sentinelSlotsNonZero', 'problems'])
+                assert.equal(summary.counts[key], 0, key);
+            assert.equal(generation.ok, true);
+            assert.equal(generation.rpBuilt.backend, 'native');
+            assert.equal(generation.rpBuilt.eventCoverage.materialized, generation.rpBuilt.eventCoverage.declared);
+            for (const symbol of generation.rpBuilt.sourceMap.filter(symbol => ['input', 'radio', 'checkbox', 'combobox', 'listbox'].includes(symbol.kind)))
+                assert.equal(symbol.native.length, 1, symbol.id);
+        });
+        check('native input stays before its clear button in IDs, definitions and parent layer', () => {
+            const input = widget('input/search'), clear = widget('input/clear');
+            assert.equal(input.record.index, clear.record.index);
+            assert.ok(input.object.id < clear.object.id, 'Native input object ID must precede the clear button');
+            const definitions = [...input.graph.objects.keys()];
+            assert.ok(definitions.indexOf(input.object.id) < definitions.indexOf(clear.object.id), 'Native input definition must precede the clear button definition');
+            const layers = [...input.graph.objects.values()].filter(object => object.className === 'Axure:DiagramObject:Layer');
+            const owner = layers.find(layer => {
+                const children = field(layer.body, 'DiagramObjects')?.items.map(item => item.value) ?? [];
+                return children.includes(input.object.id) && children.includes(clear.object.id);
+            });
+            assert.ok(owner, 'Native input and clear button must retain their shared parent Layer');
+            const siblings = field(owner.body, 'DiagramObjects').items.map(item => item.value);
+            assert.ok(siblings.indexOf(input.object.id) < siblings.indexOf(clear.object.id));
+            const mapping = generation.rpBuilt.sourceMap.find(symbol => symbol.id === 'input/search').native[0];
+            assert.equal(mapping.id, input.object.id);
+            assert.equal(mapping.record, input.record.index);
+        });
+        check('checked state, radio groups, list options and multi-selection are native fields', () => {
+            const all = widget('query/seller_all'), self = widget('query/seller_self');
+            assert.equal(field(all.object.body, 'Selected').value, true);
+            assert.equal(field(self.object.body, 'Selected').value, false);
+            assert.equal(field(all.object.body, 'radio-group').text, field(self.object.body, 'radio-group').text);
+            assert.ok(field(all.object.body, 'radio-group').text);
+            const { graph, object } = widget('lists/multi');
+            assert.equal(field(object.body, 'multiple').value, true);
+            const options = field(object.body, 'list-options').items.map(item => graph.objects.get(item.value));
+            assert.deepEqual(options.map(option => field(option.body, 'object').text), ['一', '二', '三']);
+            assert.deepEqual(options.map(option => field(option.body, 'selected').value), [true, false, true]);
+        });
+        check('style state maps reference real native styles on tabs and the text field', () => {
+            const states = logical => {
+                const { graph, object } = widget(logical);
+                const style = graph.objects.get(field(object.body, 'MyStyle').value);
+                const props = field(style.body, 'PropList').items;
+                const map = field(props.find(prop => (field(prop, 'DOAName').value & 0x3fffffff) === 21), 'Value');
+                assert.ok(map, logical + ' missing native state-style map');
+                for (const [, value] of map.entries)
+                    assert.equal(graph.objects.get(value.value)?.className, 'Axure:Style');
+                return map.entries.map(([key]) => key.text);
+            };
+            assert.ok(states('tabs/tab_0').includes('MouseOver'));
+            assert.ok(states('tabs/tab_0').includes('Selected'));
+            assert.ok(states('input/search').includes('Focused'));
+        });
+        check('compiled interactions use native checked and option getter functions', () => {
+            const calls = contexts.flatMap(({ graph }) => [...graph.objects.values()])
+                .filter(object => object.className === 'Axure:Expr:FCall')
+                .map(object => field(object.body, 'function-name')?.text);
+            for (const fn of ['GetCheckState', 'GetSelectedOption', 'SetCheckState', 'SetSelectedOption'])
+                assert.ok(calls.includes(fn), fn);
+            const allWidgets = summary.pages.flatMap(page => page.widgets);
+            const events = logical => allWidgets.find(w => w.name === names.get(logical)).interactions.map(ix => ix.event);
+            assert.ok(events('query/price').includes('OnSelectionChange'));
+            assert.ok(events('query/shipping').includes('OnSelectedChange'));
+        });
+        console.log(JSON.stringify({ ok: true, checks, evidence: 'compiler-reference-model-and-native-serialization',
+            nativeGui: 'requires separate Axure save/reopen and browser verification' }));
+    }
+}
+finally {
+    rmSync(work, { recursive: true, force: true });
 }

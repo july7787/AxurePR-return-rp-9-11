@@ -95,7 +95,7 @@ export function tryDetectFileVersion(file) {
 }
 
 // 目标版本：显式参数 > AXURE_TARGET_VERSION > 默认 11（保持 RP 11 默认行为不变）。
-export function resolveTargetVersion(explicit) {
+export function resolveTargetVersion(explicit?) {
   if (explicit !== undefined && explicit !== null && explicit !== '') return spec(explicit).version;
   const env = process.env.AXURE_TARGET_VERSION;
   if (env) return spec(env).version;

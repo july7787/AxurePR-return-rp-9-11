@@ -2,7 +2,7 @@
 
 Install README dependencies and keep the Python environment activated when running Node wrappers. Write new output paths and preserve original `.rp` inputs.
 
-JavaScript runtime files are generated from TypeScript sources (`*.mts`, `studio/web/*.ts`). Edit the TypeScript source, not the generated `*.mjs` / `app.js`; `npm install` runs `npm run build`, and CI rejects stale generated files.
+JavaScript runtime files are generated from TypeScript sources (`*.mts`, `studio/web/*.ts`). Edit the TypeScript source, not the generated `*.mjs` / `app.js`; `npm install` runs `npm run build`, and CI rejects stale generated files. The migration is currently transpile-first (`noCheck`), so `npm run typecheck` reports the remaining type debt without blocking the build.
 
 | Command | Prerequisites |
 | --- | --- |

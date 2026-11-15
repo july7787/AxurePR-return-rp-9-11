@@ -8,6 +8,7 @@
     "rootDir": ".",
     "outDir": ".emit",
     "allowJs": false,
+    "noCheck": true,
     "strict": false,
     "noImplicitAny": false,
     "skipLibCheck": true,
@@ -23,7 +24,9 @@
     "studio/**/*.mts",
     "studio/web/**/*.ts",
     "test/**/*.mts",
-    "benchmarks/**/*.mts"
+    "benchmarks/**/*.mts",
+    "examples/**/*.mts",
+    "tools/**/*.mts"
   ],
   "exclude": ["node_modules", ".emit"]
 }

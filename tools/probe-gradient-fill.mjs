@@ -18,62 +18,73 @@
 import { readFileSync } from 'node:fs';
 import { readRecords } from '../scripts/rp-records.mjs';
 import { parsePayload } from '../scripts/parse-payload.mjs';
-
 const file = process.argv[2];
 const asJson = process.argv.includes('--json');
 if (!file) {
-  console.error('用法: node tools/probe-gradient-fill.mjs <file.rp> [--json]');
-  process.exit(2);
+    console.error('用法: node tools/probe-gradient-fill.mjs <file.rp> [--json]');
+    process.exit(2);
 }
-
 const MARKERS = ['linear', 'radial', 'gradient', 'stop', 'Stop'];
 const records = readRecords(readFileSync(file));
 let hits = 0;
 const findings = [];
-
 for (let i = 0; i < records.length; i++) {
-  const raw = records[i].payload ?? records[i];
-  let text;
-  try { text = Buffer.from(raw).toString('latin1'); } catch { continue; }
-  const marker = MARKERS.find(m => text.includes(m));
-  if (!marker) continue;
-  hits++;
-  let node = null;
-  try { node = parsePayload(raw); } catch { /* 结构不可解析时只报命中 */ }
-  findings.push({ record: i, marker, parsed: node ? summarize(node) : '(不可解析，仅命中字符串)' });
-  if (findings.length >= 8) break;
+    const raw = records[i].payload ?? records[i];
+    let text;
+    try {
+        text = Buffer.from(raw).toString('latin1');
+    }
+    catch {
+        continue;
+    }
+    const marker = MARKERS.find(m => text.includes(m));
+    if (!marker)
+        continue;
+    hits++;
+    let node = null;
+    try {
+        node = parsePayload(raw);
+    }
+    catch { /* 结构不可解析时只报命中 */ }
+    findings.push({ record: i, marker, parsed: node ? summarize(node) : '(不可解析，仅命中字符串)' });
+    if (findings.length >= 8)
+        break;
 }
-
 function summarize(node, depth = 0) {
-  // 只保留与填充相关的片段，避免整棵树
-  const out = [];
-  const walk = (o, path) => {
-    if (!o || typeof o !== 'object' || depth > 64) return;
-    const keys = Object.keys(o);
-    if (keys.some(k => /fill|stop|gradient/i.test(k))) {
-      out.push({ path, keys, sample: JSON.stringify(o).slice(0, 400) });
-    }
-    for (const [k, v] of Object.entries(o)) {
-      if (v && typeof v === 'object') walk(v, path + '/' + k);
-    }
-  };
-  walk(node, '');
-  return out.slice(0, 6);
+    // 只保留与填充相关的片段，避免整棵树
+    const out = [];
+    const walk = (o, path) => {
+        if (!o || typeof o !== 'object' || depth > 64)
+            return;
+        const keys = Object.keys(o);
+        if (keys.some(k => /fill|stop|gradient/i.test(k))) {
+            out.push({ path, keys, sample: JSON.stringify(o).slice(0, 400) });
+        }
+        for (const [k, v] of Object.entries(o)) {
+            if (v && typeof v === 'object')
+                walk(v, path + '/' + k);
+        }
+    };
+    walk(node, '');
+    return out.slice(0, 6);
 }
-
 if (asJson) {
-  console.log(JSON.stringify({ file, hits, findings }, null, 2));
-} else {
-  console.log(`文件: ${file}`);
-  console.log(`命中记录: ${hits}`);
-  for (const f of findings) {
-    console.log(`\n— record #${f.record}  marker="${f.marker}"`);
-    if (Array.isArray(f.parsed)) {
-      for (const s of f.parsed) console.log(`  path=${s.path}\n  keys=${s.keys.join(',')}\n  ${s.sample}`);
-    } else {
-      console.log('  ' + f.parsed);
+    console.log(JSON.stringify({ file, hits, findings }, null, 2));
+}
+else {
+    console.log(`文件: ${file}`);
+    console.log(`命中记录: ${hits}`);
+    for (const f of findings) {
+        console.log(`\n— record #${f.record}  marker="${f.marker}"`);
+        if (Array.isArray(f.parsed)) {
+            for (const s of f.parsed)
+                console.log(`  path=${s.path}\n  keys=${s.keys.join(',')}\n  ${s.sample}`);
+        }
+        else {
+            console.log('  ' + f.parsed);
+        }
     }
-  }
-  if (!hits) console.log('\n未发现渐变填充。请先在 Axure RP 9 里手画一个渐变矩形并另存，再用本脚本解析。');
+    if (!hits)
+        console.log('\n未发现渐变填充。请先在 Axure RP 9 里手画一个渐变矩形并另存，再用本脚本解析。');
 }
 process.exit(hits ? 0 : 1);

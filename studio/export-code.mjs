@@ -5,441 +5,434 @@ import { resolveDocumentScene } from './scene-resolver.mjs';
 import { repeaterDatasetName, repeaterInlineRows } from './repeater-view.mjs';
 import { locateDiagnostic } from './diagnostics.mjs';
 import { computeDependencyClosure } from './project-bundle.mjs';
-
 export const CODE_EXPORTER_VERSION = '1.0.0';
-
 const SUPPORTED_EVENTS = new Set(['click', 'input', 'change']);
 const SUPPORTED_ACTION_TYPES = new Set([
-  'link',
-  'navigate',
-  'show',
-  'hide',
-  'toggle',
-  'set-text',
-  'set-var',
-  'set-variable',
-  'set-panel-state',
-  'dataset-select',
-  'dataset-toggle-select',
-  'dataset-add',
-  'dataset-update',
-  'dataset-delete',
-  'dataset-filter',
-  'dataset-sort',
-  'dataset-page',
-  'repeater-select',
-  'repeater-toggle-select',
-  'repeater-add',
-  'repeater-update',
-  'repeater-delete',
-  'repeater-filter',
-  'repeater-sort',
-  'repeater-page',
+    'link',
+    'navigate',
+    'show',
+    'hide',
+    'toggle',
+    'set-text',
+    'set-var',
+    'set-variable',
+    'set-panel-state',
+    'dataset-select',
+    'dataset-toggle-select',
+    'dataset-add',
+    'dataset-update',
+    'dataset-delete',
+    'dataset-filter',
+    'dataset-sort',
+    'dataset-page',
+    'repeater-select',
+    'repeater-toggle-select',
+    'repeater-add',
+    'repeater-update',
+    'repeater-delete',
+    'repeater-filter',
+    'repeater-sort',
+    'repeater-page',
 ]);
-
 function escapeHtml(str) {
-  return String(str ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
 }
-
 function inspectActionSpec(spec, outSupported, outUnsupported, context) {
-  if (!spec) return;
-  if (Array.isArray(spec)) {
-    for (const item of spec) inspectActionSpec(item, outSupported, outUnsupported, context);
-    return;
-  }
-  if (typeof spec === 'string') {
-    outSupported.push({ ...context, actionType: 'link', target: spec });
-    return;
-  }
-  if (typeof spec !== 'object') {
-    outUnsupported.push({
-      ...context,
-      actionType: typeof spec,
-      reason: `不支持的交互动作格式：${typeof spec}`,
-    });
-    return;
-  }
-
-  if (Array.isArray(spec.cases)) {
-    for (const c of spec.cases) {
-      inspectActionSpec(c, outSupported, outUnsupported, context);
+    if (!spec)
+        return;
+    if (Array.isArray(spec)) {
+        for (const item of spec)
+            inspectActionSpec(item, outSupported, outUnsupported, context);
+        return;
     }
-    return;
-  }
-  if (spec.when !== undefined || spec.if !== undefined || spec.else !== undefined) {
-    if (spec.then) inspectActionSpec(spec.then, outSupported, outUnsupported, context);
-    if (spec.else && typeof spec.else === 'object') inspectActionSpec(spec.else, outSupported, outUnsupported, context);
+    if (typeof spec === 'string') {
+        outSupported.push({ ...context, actionType: 'link', target: spec });
+        return;
+    }
+    if (typeof spec !== 'object') {
+        outUnsupported.push({
+            ...context,
+            actionType: typeof spec,
+            reason: `不支持的交互动作格式：${typeof spec}`,
+        });
+        return;
+    }
+    if (Array.isArray(spec.cases)) {
+        for (const c of spec.cases) {
+            inspectActionSpec(c, outSupported, outUnsupported, context);
+        }
+        return;
+    }
+    if (spec.when !== undefined || spec.if !== undefined || spec.else !== undefined) {
+        if (spec.then)
+            inspectActionSpec(spec.then, outSupported, outUnsupported, context);
+        if (spec.else && typeof spec.else === 'object')
+            inspectActionSpec(spec.else, outSupported, outUnsupported, context);
+        if (Array.isArray(spec.actions)) {
+            for (const sub of spec.actions)
+                inspectActionSpec(sub, outSupported, outUnsupported, context);
+            return;
+        }
+        if (spec.then || (spec.else && typeof spec.else === 'object'))
+            return;
+    }
+    let matchedAny = false;
+    const actType = spec.type || spec.action || null;
+    if (actType) {
+        if (SUPPORTED_ACTION_TYPES.has(actType)) {
+            outSupported.push({ ...context, actionType: actType, target: spec.target || spec.page || spec.to || spec.panel || spec.dataset || null });
+            matchedAny = true;
+        }
+        else {
+            outUnsupported.push({
+                ...context,
+                actionType: actType,
+                reason: `代码出口首版不支持动作类型 "${actType}"`,
+            });
+            return;
+        }
+    }
+    if (spec.setVar && typeof spec.setVar === 'object') {
+        outSupported.push({ ...context, actionType: 'set-var', keys: Object.keys(spec.setVar) });
+        matchedAny = true;
+    }
+    if (spec.show) {
+        outSupported.push({ ...context, actionType: 'show', target: spec.show });
+        matchedAny = true;
+    }
+    if (spec.hide) {
+        outSupported.push({ ...context, actionType: 'hide', target: spec.hide });
+        matchedAny = true;
+    }
+    if (spec.setText && typeof spec.setText === 'object') {
+        outSupported.push({ ...context, actionType: 'set-text', keys: Object.keys(spec.setText) });
+        matchedAny = true;
+    }
+    if (spec.setPanelState) {
+        outSupported.push({ ...context, actionType: 'set-panel-state', target: spec.setPanelState });
+        matchedAny = true;
+    }
+    if (spec.datasetAction) {
+        outSupported.push({ ...context, actionType: `dataset-${spec.datasetAction.op || 'action'}`, target: spec.datasetAction.dataset || spec.datasetAction.repeater || null });
+        matchedAny = true;
+    }
+    if (spec.link) {
+        outSupported.push({ ...context, actionType: 'link', target: spec.link });
+        matchedAny = true;
+    }
     if (Array.isArray(spec.actions)) {
-      for (const sub of spec.actions) inspectActionSpec(sub, outSupported, outUnsupported, context);
-      return;
+        for (const sub of spec.actions)
+            inspectActionSpec(sub, outSupported, outUnsupported, context);
+        matchedAny = true;
     }
-    if (spec.then || (spec.else && typeof spec.else === 'object')) return;
-  }
-
-  let matchedAny = false;
-  const actType = spec.type || spec.action || null;
-  if (actType) {
-    if (SUPPORTED_ACTION_TYPES.has(actType)) {
-      outSupported.push({ ...context, actionType: actType, target: spec.target || spec.page || spec.to || spec.panel || spec.dataset || null });
-      matchedAny = true;
-    } else {
-      outUnsupported.push({
-        ...context,
-        actionType: actType,
-        reason: `代码出口首版不支持动作类型 "${actType}"`,
-      });
-      return;
+    if (!matchedAny) {
+        outUnsupported.push({
+            ...context,
+            actionType: actType || 'empty-or-unknown',
+            reason: '交互对象未包含已支持的可执行动作（拒绝输出空壳按钮）',
+        });
     }
-  }
-  if (spec.setVar && typeof spec.setVar === 'object') {
-    outSupported.push({ ...context, actionType: 'set-var', keys: Object.keys(spec.setVar) });
-    matchedAny = true;
-  }
-  if (spec.show) {
-    outSupported.push({ ...context, actionType: 'show', target: spec.show });
-    matchedAny = true;
-  }
-  if (spec.hide) {
-    outSupported.push({ ...context, actionType: 'hide', target: spec.hide });
-    matchedAny = true;
-  }
-  if (spec.setText && typeof spec.setText === 'object') {
-    outSupported.push({ ...context, actionType: 'set-text', keys: Object.keys(spec.setText) });
-    matchedAny = true;
-  }
-  if (spec.setPanelState) {
-    outSupported.push({ ...context, actionType: 'set-panel-state', target: spec.setPanelState });
-    matchedAny = true;
-  }
-  if (spec.datasetAction) {
-    outSupported.push({ ...context, actionType: `dataset-${spec.datasetAction.op || 'action'}`, target: spec.datasetAction.dataset || spec.datasetAction.repeater || null });
-    matchedAny = true;
-  }
-  if (spec.link) {
-    outSupported.push({ ...context, actionType: 'link', target: spec.link });
-    matchedAny = true;
-  }
-  if (Array.isArray(spec.actions)) {
-    for (const sub of spec.actions) inspectActionSpec(sub, outSupported, outUnsupported, context);
-    matchedAny = true;
-  }
-
-  if (!matchedAny) {
-    outUnsupported.push({
-      ...context,
-      actionType: actType || 'empty-or-unknown',
-      reason: '交互对象未包含已支持的可执行动作（拒绝输出空壳按钮）',
-    });
-  }
 }
-
 export function analyzeDocumentInteractionsAndLayout(doc) {
-  const supported = [];
-  const unsupported = [];
-  const nodeUnsupportedMap = new Map();
-  const nodeSupportedMap = new Map();
-  const declaredBreakpoints = Array.isArray(doc.adaptiveViews)
-    ? doc.adaptiveViews.map(v => ({
-        id: v.id || v.name,
-        name: v.name || v.id,
-        width: v.width ?? v.w ?? null,
-        height: v.height ?? v.h ?? null,
-      }))
-    : [];
-  const constraintNodes = [];
-
-  function walk(node, pageId, scopePath) {
-    if (!node || typeof node !== 'object') return;
-    const scopedId = `${scopePath}/${node.id}`;
-    if (node.constraints && typeof node.constraints === 'object') {
-      constraintNodes.push({ pageId, nodeId: node.id, scopedId, constraints: structuredClone(node.constraints) });
-    }
-    const rawEvents = {
-      ...(node.on && typeof node.on === 'object' ? node.on : {}),
-      ...(node.interactions && typeof node.interactions === 'object' ? node.interactions : {}),
-      ...(node.onClick ? { click: node.onClick } : {}),
-    };
-    for (const [event, spec] of Object.entries(rawEvents)) {
-      if (spec === undefined || spec === null) continue;
-      const context = { pageId, nodeId: node.id, scopedId, event };
-      if (!SUPPORTED_EVENTS.has(event)) {
-        const entry = {
-          ...context,
-          actionType: event,
-          reason: `代码出口首版不支持事件触发器 "${event}"（仅支持 click / input / change）`,
+    const supported = [];
+    const unsupported = [];
+    const nodeUnsupportedMap = new Map();
+    const nodeSupportedMap = new Map();
+    const declaredBreakpoints = Array.isArray(doc.adaptiveViews)
+        ? doc.adaptiveViews.map(v => ({
+            id: v.id || v.name,
+            name: v.name || v.id,
+            width: v.width ?? v.w ?? null,
+            height: v.height ?? v.h ?? null,
+        }))
+        : [];
+    const constraintNodes = [];
+    function walk(node, pageId, scopePath) {
+        if (!node || typeof node !== 'object')
+            return;
+        const scopedId = `${scopePath}/${node.id}`;
+        if (node.constraints && typeof node.constraints === 'object') {
+            constraintNodes.push({ pageId, nodeId: node.id, scopedId, constraints: structuredClone(node.constraints) });
+        }
+        const rawEvents = {
+            ...(node.on && typeof node.on === 'object' ? node.on : {}),
+            ...(node.interactions && typeof node.interactions === 'object' ? node.interactions : {}),
+            ...(node.onClick ? { click: node.onClick } : {}),
         };
-        unsupported.push(entry);
-        if (!nodeUnsupportedMap.has(scopedId)) nodeUnsupportedMap.set(scopedId, []);
-        nodeUnsupportedMap.get(scopedId).push(entry);
-        continue;
-      }
-      const beforeSup = supported.length;
-      const beforeUnsup = unsupported.length;
-      inspectActionSpec(spec, supported, unsupported, context);
-      if (supported.length > beforeSup) {
-        nodeSupportedMap.set(scopedId, (nodeSupportedMap.get(scopedId) || 0) + (supported.length - beforeSup));
-      }
-      if (unsupported.length > beforeUnsup) {
-        if (!nodeUnsupportedMap.has(scopedId)) nodeUnsupportedMap.set(scopedId, []);
-        nodeUnsupportedMap.get(scopedId).push(...unsupported.slice(beforeUnsup));
-      }
+        for (const [event, spec] of Object.entries(rawEvents)) {
+            if (spec === undefined || spec === null)
+                continue;
+            const context = { pageId, nodeId: node.id, scopedId, event };
+            if (!SUPPORTED_EVENTS.has(event)) {
+                const entry = {
+                    ...context,
+                    actionType: event,
+                    reason: `代码出口首版不支持事件触发器 "${event}"（仅支持 click / input / change）`,
+                };
+                unsupported.push(entry);
+                if (!nodeUnsupportedMap.has(scopedId))
+                    nodeUnsupportedMap.set(scopedId, []);
+                nodeUnsupportedMap.get(scopedId).push(entry);
+                continue;
+            }
+            const beforeSup = supported.length;
+            const beforeUnsup = unsupported.length;
+            inspectActionSpec(spec, supported, unsupported, context);
+            if (supported.length > beforeSup) {
+                nodeSupportedMap.set(scopedId, (nodeSupportedMap.get(scopedId) || 0) + (supported.length - beforeSup));
+            }
+            if (unsupported.length > beforeUnsup) {
+                if (!nodeUnsupportedMap.has(scopedId))
+                    nodeUnsupportedMap.set(scopedId, []);
+                nodeUnsupportedMap.get(scopedId).push(...unsupported.slice(beforeUnsup));
+            }
+        }
+        if (Array.isArray(node.children)) {
+            for (const ch of node.children)
+                walk(ch, pageId, scopePath);
+        }
+        if (node.template && typeof node.template === 'object') {
+            walk(node.template, pageId, `${scopedId}/template`);
+        }
+        if (Array.isArray(node.states)) {
+            for (const st of node.states) {
+                if (st?.root)
+                    walk(st.root, pageId, `${scopedId}/${st.id}`);
+            }
+        }
     }
-
-    if (Array.isArray(node.children)) {
-      for (const ch of node.children) walk(ch, pageId, scopePath);
+    for (const pg of doc.pages || []) {
+        if (pg.root)
+            walk(pg.root, pg.id, pg.id);
     }
-    if (node.template && typeof node.template === 'object') {
-      walk(node.template, pageId, `${scopedId}/template`);
-    }
-    if (Array.isArray(node.states)) {
-      for (const st of node.states) {
-        if (st?.root) walk(st.root, pageId, `${scopedId}/${st.id}`);
-      }
-    }
-  }
-
-  for (const pg of doc.pages || []) {
-    if (pg.root) walk(pg.root, pg.id, pg.id);
-  }
-
-  return {
-    supported,
-    unsupported,
-    nodeUnsupportedMap,
-    nodeSupportedMap,
-    declaredBreakpoints,
-    constraintNodes,
-  };
+    return {
+        supported,
+        unsupported,
+        nodeUnsupportedMap,
+        nodeSupportedMap,
+        declaredBreakpoints,
+        constraintNodes,
+    };
 }
-
 function serializePageNode(n, assetRewriteMap, nodeUnsupportedMap, nodeSupportedMap) {
-  const rewrittenSrc = n.src && assetRewriteMap.has(n.src) ? assetRewriteMap.get(n.src) : (n.src || null);
-  const unsupEntries = nodeUnsupportedMap.get(n.scopedId) || [];
-  const supCount = nodeSupportedMap.get(n.scopedId) || 0;
-  return {
-    id: n.id,
-    scopedId: n.scopedId,
-    pageId: n.pageId,
-    parentId: n.parentId || null,
-    parentScopedId: n.parentScopedId || null,
-    sourceSizing: n.sourceSizing || null,
-    panelOwnerId: n.panelOwnerId || null,
-    repeaterTemplateOwner: n.repeaterTemplateOwner || null,
-    renderOrder: n.renderOrder,
-    name: n.name || n.id,
-    type: n.type,
-    role: n.role || null,
-    x: n.x,
-    y: n.y,
-    w: n.w,
-    h: n.h,
-    relX: n.relX ?? 0,
-    relY: n.relY ?? 0,
-    text: n.text ?? '',
-    rawText: n.rawText ?? n.text ?? '',
-    placeholder: n.placeholder || '',
-    value: n.value ?? '',
-    src: rewrittenSrc,
-    objectFit: n.objectFit || 'cover',
-    fill: n.fill || null,
-    stroke: n.stroke || null,
-    strokeWidth: n.strokeWidth ?? 0,
-    strokeStyle: n.strokeStyle || 'solid',
-    radius: n.radius ?? 0,
-    opacity: n.opacity ?? 1,
-    rotation: n.rotation ?? 0,
-    threeDTransform: n.threeDTransform || null,
-    shadow: n.shadow || null,
-    clip: Boolean(n.clip),
-    overflow: n.overflow || 'visible',
-    color: n.color || '#1E293B',
-    fontSize: n.fontSize || 14,
-    fontFamily: n.fontFamily || 'PingFang SC',
-    fontWeight: n.fontWeight || 400,
-    italic: Boolean(n.italic),
-    underline: Boolean(n.underline),
-    strikethrough: Boolean(n.strikethrough),
-    lineHeight: n.lineHeight || Math.round((n.fontSize || 14) * 1.4),
-    letterSpacing: n.letterSpacing || 0,
-    textAlign: n.textAlign || 'left',
-    verticalAlign: n.verticalAlign || 'top',
-    wrap: n.wrap !== false,
-    padX: n.padX ?? 0,
-    padY: n.padY ?? 0,
-    textPaddingX: n.textPaddingX ?? null,
-    textPaddingY: n.textPaddingY ?? null,
-    visible: Boolean(n.visible),
-    ownVisible: Boolean(n.ownVisible),
-    state: n.state || 'default',
-    interactive: Boolean(n.interactive),
-    on: n.on ? structuredClone(n.on) : null,
-    hasSupportedInteraction: supCount > 0,
-    unsupportedInteractions: unsupEntries.map(u => ({ event: u.event, actionType: u.actionType, reason: u.reason })),
-    // Dynamic panel metadata
-    activeStateId: n.activeStateId || null,
-    states: n.states ? structuredClone(n.states) : null,
-    // Repeater metadata
-    dataset: repeaterDatasetName(n) || null,
-    rowHeight: n.rowHeight || 56,
-    rowGap: n.rowGap ?? 8,
-    pageSize: n.pageSize ?? null,
-    page: n.page ?? 1,
-    columns: n.columns || 1,
-    gap: n.type === 'repeater' ? (n.rowGap ?? (n.gap || 8)) : (n.gap ?? 8),
-    direction: n.direction || 'column',
-    // Vector path metadata
-    svgD: n.svgD || null,
-    svgViewBox: n.svgViewBox || null,
-    fillRule: n.fillRule || 'nonzero',
-    strokeLinecap: n.strokeLinecap || 'round',
-    strokeLinejoin: n.strokeLinejoin || 'round',
-    strokeDasharray: n.strokeDasharray || null,
-  };
+    const rewrittenSrc = n.src && assetRewriteMap.has(n.src) ? assetRewriteMap.get(n.src) : (n.src || null);
+    const unsupEntries = nodeUnsupportedMap.get(n.scopedId) || [];
+    const supCount = nodeSupportedMap.get(n.scopedId) || 0;
+    return {
+        id: n.id,
+        scopedId: n.scopedId,
+        pageId: n.pageId,
+        parentId: n.parentId || null,
+        parentScopedId: n.parentScopedId || null,
+        sourceSizing: n.sourceSizing || null,
+        panelOwnerId: n.panelOwnerId || null,
+        repeaterTemplateOwner: n.repeaterTemplateOwner || null,
+        renderOrder: n.renderOrder,
+        name: n.name || n.id,
+        type: n.type,
+        role: n.role || null,
+        x: n.x,
+        y: n.y,
+        w: n.w,
+        h: n.h,
+        relX: n.relX ?? 0,
+        relY: n.relY ?? 0,
+        text: n.text ?? '',
+        rawText: n.rawText ?? n.text ?? '',
+        placeholder: n.placeholder || '',
+        value: n.value ?? '',
+        src: rewrittenSrc,
+        objectFit: n.objectFit || 'cover',
+        fill: n.fill || null,
+        stroke: n.stroke || null,
+        strokeWidth: n.strokeWidth ?? 0,
+        strokeStyle: n.strokeStyle || 'solid',
+        radius: n.radius ?? 0,
+        opacity: n.opacity ?? 1,
+        rotation: n.rotation ?? 0,
+        threeDTransform: n.threeDTransform || null,
+        shadow: n.shadow || null,
+        clip: Boolean(n.clip),
+        overflow: n.overflow || 'visible',
+        color: n.color || '#1E293B',
+        fontSize: n.fontSize || 14,
+        fontFamily: n.fontFamily || 'PingFang SC',
+        fontWeight: n.fontWeight || 400,
+        italic: Boolean(n.italic),
+        underline: Boolean(n.underline),
+        strikethrough: Boolean(n.strikethrough),
+        lineHeight: n.lineHeight || Math.round((n.fontSize || 14) * 1.4),
+        letterSpacing: n.letterSpacing || 0,
+        textAlign: n.textAlign || 'left',
+        verticalAlign: n.verticalAlign || 'top',
+        wrap: n.wrap !== false,
+        padX: n.padX ?? 0,
+        padY: n.padY ?? 0,
+        textPaddingX: n.textPaddingX ?? null,
+        textPaddingY: n.textPaddingY ?? null,
+        visible: Boolean(n.visible),
+        ownVisible: Boolean(n.ownVisible),
+        state: n.state || 'default',
+        interactive: Boolean(n.interactive),
+        on: n.on ? structuredClone(n.on) : null,
+        hasSupportedInteraction: supCount > 0,
+        unsupportedInteractions: unsupEntries.map(u => ({ event: u.event, actionType: u.actionType, reason: u.reason })),
+        // Dynamic panel metadata
+        activeStateId: n.activeStateId || null,
+        states: n.states ? structuredClone(n.states) : null,
+        // Repeater metadata
+        dataset: repeaterDatasetName(n) || null,
+        rowHeight: n.rowHeight || 56,
+        rowGap: n.rowGap ?? 8,
+        pageSize: n.pageSize ?? null,
+        page: n.page ?? 1,
+        columns: n.columns || 1,
+        gap: n.type === 'repeater' ? (n.rowGap ?? (n.gap || 8)) : (n.gap ?? 8),
+        direction: n.direction || 'column',
+        // Vector path metadata
+        svgD: n.svgD || null,
+        svgViewBox: n.svgViewBox || null,
+        fillRule: n.fillRule || 'nonzero',
+        strokeLinecap: n.strokeLinecap || 'round',
+        strokeLinejoin: n.strokeLinejoin || 'round',
+        strokeDasharray: n.strokeDasharray || null,
+    };
 }
-
 function collectRawVisibilityMap(doc) {
-  const map = new Map();
-  function walk(node, scopePath) {
-    if (!node || typeof node !== 'object') return;
-    const scopedId = `${scopePath}/${node.id}`;
-    const ownVis = node.visible !== false && node.hidden !== true;
-    map.set(scopedId, ownVis);
-    map.set(`sizing:${scopedId}`, Object.fromEntries(['w', 'h', 'minW', 'maxW', 'minH', 'maxH', 'layout', 'justify', 'align'].filter(key => node[key] !== undefined).map(key => [key, node[key]])));
-    if (typeof node.text === 'string' && node.text.startsWith('=')) {
-      map.set(`rawText:${scopedId}`, node.text);
+    const map = new Map();
+    function walk(node, scopePath) {
+        if (!node || typeof node !== 'object')
+            return;
+        const scopedId = `${scopePath}/${node.id}`;
+        const ownVis = node.visible !== false && node.hidden !== true;
+        map.set(scopedId, ownVis);
+        map.set(`sizing:${scopedId}`, Object.fromEntries(['w', 'h', 'minW', 'maxW', 'minH', 'maxH', 'layout', 'justify', 'align'].filter(key => node[key] !== undefined).map(key => [key, node[key]])));
+        if (typeof node.text === 'string' && node.text.startsWith('=')) {
+            map.set(`rawText:${scopedId}`, node.text);
+        }
+        if (Array.isArray(node.children)) {
+            for (const ch of node.children)
+                walk(ch, scopePath);
+        }
+        if (node.template && typeof node.template === 'object') {
+            walk(node.template, `${scopedId}/template`);
+        }
+        if (Array.isArray(node.states)) {
+            for (const st of node.states) {
+                if (st?.root)
+                    walk(st.root, `${scopedId}/${st.id}`);
+            }
+        }
     }
-    if (Array.isArray(node.children)) {
-      for (const ch of node.children) walk(ch, scopePath);
+    for (const pg of doc.pages || []) {
+        if (pg.root)
+            walk(pg.root, pg.id);
     }
-    if (node.template && typeof node.template === 'object') {
-      walk(node.template, `${scopedId}/template`);
-    }
-    if (Array.isArray(node.states)) {
-      for (const st of node.states) {
-        if (st?.root) walk(st.root, `${scopedId}/${st.id}`);
-      }
-    }
-  }
-  for (const pg of doc.pages || []) {
-    if (pg.root) walk(pg.root, pg.id);
-  }
-  return map;
+    return map;
 }
-
 function renderStaticInitialNodeHtml(n) {
-  if (n.type === 'phone-shell' || n.repeaterTemplateOwner) return '';
-  const styleParts = [
-    `left:${n.x}px`,
-    `top:${n.y}px`,
-    `width:${n.w}px`,
-    `height:${n.h}px`,
-    `z-index:${n.renderOrder || 1}`,
-  ];
-  if (!n.visible) styleParts.push('display:none');
-  if (n.fill && n.type !== 'path') styleParts.push(`background:${n.fill}`);
-  if (n.stroke && n.strokeWidth > 0 && n.type !== 'path') {
-    styleParts.push(`border:${n.strokeWidth}px ${n.strokeStyle || 'solid'} ${n.stroke}`);
-  }
-  if (n.radius > 0) styleParts.push(`border-radius:${n.radius}px`);
-  if (n.opacity !== undefined && n.opacity !== 1) styleParts.push(`opacity:${n.opacity}`);
-  // 白名单外的值不进 style 属性（防 HTML 注入），标注 data-unsupported-style 披露（S3-1）
-  const rawTransform = typeof n.threeDTransform === 'string' ? n.threeDTransform.trim() : '';
-  if (rawTransform && /^[a-zA-Z][a-zA-Z0-9\s(),.%+\-]*$/.test(rawTransform)) styleParts.push(`transform:${rawTransform}`);
-  else if (rawTransform) styleParts.push(`transform:rotate(${n.rotation || 0}deg)`);
-  else if (n.rotation) styleParts.push(`transform:rotate(${n.rotation}deg)`);
-  if (n.clip || n.overflow === 'hidden') styleParts.push('overflow:hidden');
-
-  const unsupAttr = (n.unsupportedInteractions?.length
-    ? ` data-unsupported-interaction="${escapeHtml(n.unsupportedInteractions.map(u => u.reason).join('; '))}" aria-disabled="true"`
-    : '') + (rawTransform && !/^[a-zA-Z][a-zA-Z0-9\s(),.%+\-]*$/.test(rawTransform) ? ` data-unsupported-style="${escapeHtml(rawTransform)}"` : '');
-  const roleAttr = n.role ? ` data-role="${escapeHtml(n.role)}"` : '';
-
-  if (n.type === 'path' && n.svgD) {
-    const vb = n.svgViewBox || { x: 0, y: 0, w: n.w || 100, h: n.h || 100 };
-    const dashAttr = n.strokeDasharray ? ` stroke-dasharray="${escapeHtml(n.strokeDasharray)}"` : '';
-    return `<div class="export-node export-node-path" data-node-id="${escapeHtml(n.id)}" data-scoped-id="${escapeHtml(n.scopedId)}" data-node-type="path"${roleAttr}${unsupAttr} style="${styleParts.join(';')}"><svg class="export-vector-svg" viewBox="${vb.x} ${vb.y} ${vb.w} ${vb.h}" width="100%" height="100%" preserveAspectRatio="none"><path d="${escapeHtml(n.svgD)}" fill="${escapeHtml(n.fill || 'none')}" fill-rule="${escapeHtml(n.fillRule || 'nonzero')}" stroke="${escapeHtml(n.stroke || 'none')}" stroke-width="${n.stroke ? (n.strokeWidth ?? 1) : 0}" stroke-linecap="${escapeHtml(n.strokeLinecap || 'round')}" stroke-linejoin="${escapeHtml(n.strokeLinejoin || 'round')}"${dashAttr}/></svg></div>`;
-  }
-
-  if (n.type === 'image') {
-    const imgHtml = n.src
-      ? `<img src="${escapeHtml(n.src)}" alt="${escapeHtml(n.name || n.id)}" style="width:100%;height:100%;object-fit:${escapeHtml(n.objectFit || 'cover')};display:block;" />`
-      : `<div class="export-image-placeholder">${escapeHtml(n.name || n.id)}</div>`;
-    return `<div class="export-node export-node-image" data-node-id="${escapeHtml(n.id)}" data-scoped-id="${escapeHtml(n.scopedId)}" data-node-type="image"${roleAttr}${unsupAttr} style="${styleParts.join(';')}">${imgHtml}</div>`;
-  }
-
-  if (n.type === 'input') {
-    styleParts.push(
-      `color:${n.color || '#1E293B'}`,
-      `font-size:${n.fontSize || 14}px`,
-      `font-family:${escapeHtml(n.fontFamily || 'PingFang SC')}, sans-serif`,
-      'padding:0 12px'
-    );
-    return `<input class="export-node export-node-input" data-node-id="${escapeHtml(n.id)}" data-scoped-id="${escapeHtml(n.scopedId)}" data-node-type="input"${roleAttr}${unsupAttr} type="text" value="${escapeHtml(n.value || n.text || '')}" placeholder="${escapeHtml(n.placeholder || '')}" style="${styleParts.join(';')}" />`;
-  }
-
-  const isTextBearing = ['label', 'paragraph', 'button', 'badge'].includes(n.type) || Boolean(n.text);
-  if (isTextBearing) {
-    styleParts.push(
-      `color:${n.color || '#1E293B'}`,
-      `font-size:${n.fontSize || 14}px`,
-      `font-family:${escapeHtml(n.fontFamily || 'PingFang SC')}, sans-serif`,
-      `font-weight:${n.fontWeight || 400}`,
-      `line-height:${n.lineHeight || Math.round((n.fontSize || 14) * 1.4)}px`,
-      `text-align:${n.textAlign || 'left'}`
-    );
-    if (n.letterSpacing) styleParts.push(`letter-spacing:${n.letterSpacing}px`);
-    if (n.padX || n.padY) styleParts.push(`padding:${Math.round((n.padY || 0) / 2)}px ${Math.round((n.padX || 0) / 2)}px`);
-    if (n.type === 'button' || n.textAlign === 'center') {
-      styleParts.push('display:' + (n.visible ? 'flex' : 'none'), 'align-items:center', `justify-content:${n.textAlign === 'center' ? 'center' : n.textAlign === 'right' ? 'flex-end' : 'flex-start'}`);
+    if (n.type === 'phone-shell' || n.repeaterTemplateOwner)
+        return '';
+    const styleParts = [
+        `left:${n.x}px`,
+        `top:${n.y}px`,
+        `width:${n.w}px`,
+        `height:${n.h}px`,
+        `z-index:${n.renderOrder || 1}`,
+    ];
+    if (!n.visible)
+        styleParts.push('display:none');
+    if (n.fill && n.type !== 'path')
+        styleParts.push(`background:${n.fill}`);
+    if (n.stroke && n.strokeWidth > 0 && n.type !== 'path') {
+        styleParts.push(`border:${n.strokeWidth}px ${n.strokeStyle || 'solid'} ${n.stroke}`);
     }
-  }
-  const tag = n.type === 'button' && (n.hasSupportedInteraction || !n.unsupportedInteractions?.length) ? 'button' : 'div';
-  const btnTypeAttr = tag === 'button' ? ' type="button"' : '';
-  const interactiveClass = n.hasSupportedInteraction ? ' is-interactive' : '';
-  const unsupClass = n.unsupportedInteractions?.length && !n.hasSupportedInteraction ? ' is-unsupported-interaction' : '';
-  return `<${tag}${btnTypeAttr} class="export-node export-node-${escapeHtml(n.type)}${interactiveClass}${unsupClass}" data-node-id="${escapeHtml(n.id)}" data-scoped-id="${escapeHtml(n.scopedId)}" data-node-type="${escapeHtml(n.type)}"${roleAttr}${unsupAttr} style="${styleParts.join(';')}">${escapeHtml(n.text || '')}</${tag}>`;
+    if (n.radius > 0)
+        styleParts.push(`border-radius:${n.radius}px`);
+    if (n.opacity !== undefined && n.opacity !== 1)
+        styleParts.push(`opacity:${n.opacity}`);
+    // 白名单外的值不进 style 属性（防 HTML 注入），标注 data-unsupported-style 披露（S3-1）
+    const rawTransform = typeof n.threeDTransform === 'string' ? n.threeDTransform.trim() : '';
+    if (rawTransform && /^[a-zA-Z][a-zA-Z0-9\s(),.%+\-]*$/.test(rawTransform))
+        styleParts.push(`transform:${rawTransform}`);
+    else if (rawTransform)
+        styleParts.push(`transform:rotate(${n.rotation || 0}deg)`);
+    else if (n.rotation)
+        styleParts.push(`transform:rotate(${n.rotation}deg)`);
+    if (n.clip || n.overflow === 'hidden')
+        styleParts.push('overflow:hidden');
+    const unsupAttr = (n.unsupportedInteractions?.length
+        ? ` data-unsupported-interaction="${escapeHtml(n.unsupportedInteractions.map(u => u.reason).join('; '))}" aria-disabled="true"`
+        : '') + (rawTransform && !/^[a-zA-Z][a-zA-Z0-9\s(),.%+\-]*$/.test(rawTransform) ? ` data-unsupported-style="${escapeHtml(rawTransform)}"` : '');
+    const roleAttr = n.role ? ` data-role="${escapeHtml(n.role)}"` : '';
+    if (n.type === 'path' && n.svgD) {
+        const vb = n.svgViewBox || { x: 0, y: 0, w: n.w || 100, h: n.h || 100 };
+        const dashAttr = n.strokeDasharray ? ` stroke-dasharray="${escapeHtml(n.strokeDasharray)}"` : '';
+        return `<div class="export-node export-node-path" data-node-id="${escapeHtml(n.id)}" data-scoped-id="${escapeHtml(n.scopedId)}" data-node-type="path"${roleAttr}${unsupAttr} style="${styleParts.join(';')}"><svg class="export-vector-svg" viewBox="${vb.x} ${vb.y} ${vb.w} ${vb.h}" width="100%" height="100%" preserveAspectRatio="none"><path d="${escapeHtml(n.svgD)}" fill="${escapeHtml(n.fill || 'none')}" fill-rule="${escapeHtml(n.fillRule || 'nonzero')}" stroke="${escapeHtml(n.stroke || 'none')}" stroke-width="${n.stroke ? (n.strokeWidth ?? 1) : 0}" stroke-linecap="${escapeHtml(n.strokeLinecap || 'round')}" stroke-linejoin="${escapeHtml(n.strokeLinejoin || 'round')}"${dashAttr}/></svg></div>`;
+    }
+    if (n.type === 'image') {
+        const imgHtml = n.src
+            ? `<img src="${escapeHtml(n.src)}" alt="${escapeHtml(n.name || n.id)}" style="width:100%;height:100%;object-fit:${escapeHtml(n.objectFit || 'cover')};display:block;" />`
+            : `<div class="export-image-placeholder">${escapeHtml(n.name || n.id)}</div>`;
+        return `<div class="export-node export-node-image" data-node-id="${escapeHtml(n.id)}" data-scoped-id="${escapeHtml(n.scopedId)}" data-node-type="image"${roleAttr}${unsupAttr} style="${styleParts.join(';')}">${imgHtml}</div>`;
+    }
+    if (n.type === 'input') {
+        styleParts.push(`color:${n.color || '#1E293B'}`, `font-size:${n.fontSize || 14}px`, `font-family:${escapeHtml(n.fontFamily || 'PingFang SC')}, sans-serif`, 'padding:0 12px');
+        return `<input class="export-node export-node-input" data-node-id="${escapeHtml(n.id)}" data-scoped-id="${escapeHtml(n.scopedId)}" data-node-type="input"${roleAttr}${unsupAttr} type="text" value="${escapeHtml(n.value || n.text || '')}" placeholder="${escapeHtml(n.placeholder || '')}" style="${styleParts.join(';')}" />`;
+    }
+    const isTextBearing = ['label', 'paragraph', 'button', 'badge'].includes(n.type) || Boolean(n.text);
+    if (isTextBearing) {
+        styleParts.push(`color:${n.color || '#1E293B'}`, `font-size:${n.fontSize || 14}px`, `font-family:${escapeHtml(n.fontFamily || 'PingFang SC')}, sans-serif`, `font-weight:${n.fontWeight || 400}`, `line-height:${n.lineHeight || Math.round((n.fontSize || 14) * 1.4)}px`, `text-align:${n.textAlign || 'left'}`);
+        if (n.letterSpacing)
+            styleParts.push(`letter-spacing:${n.letterSpacing}px`);
+        if (n.padX || n.padY)
+            styleParts.push(`padding:${Math.round((n.padY || 0) / 2)}px ${Math.round((n.padX || 0) / 2)}px`);
+        if (n.type === 'button' || n.textAlign === 'center') {
+            styleParts.push('display:' + (n.visible ? 'flex' : 'none'), 'align-items:center', `justify-content:${n.textAlign === 'center' ? 'center' : n.textAlign === 'right' ? 'flex-end' : 'flex-start'}`);
+        }
+    }
+    const tag = n.type === 'button' && (n.hasSupportedInteraction || !n.unsupportedInteractions?.length) ? 'button' : 'div';
+    const btnTypeAttr = tag === 'button' ? ' type="button"' : '';
+    const interactiveClass = n.hasSupportedInteraction ? ' is-interactive' : '';
+    const unsupClass = n.unsupportedInteractions?.length && !n.hasSupportedInteraction ? ' is-unsupported-interaction' : '';
+    return `<${tag}${btnTypeAttr} class="export-node export-node-${escapeHtml(n.type)}${interactiveClass}${unsupClass}" data-node-id="${escapeHtml(n.id)}" data-scoped-id="${escapeHtml(n.scopedId)}" data-node-type="${escapeHtml(n.type)}"${roleAttr}${unsupAttr} style="${styleParts.join(';')}">${escapeHtml(n.text || '')}</${tag}>`;
 }
-
 function buildStylesCss(doc, layoutAnalysis) {
-  const tokenLines = [];
-  const colors = { ...(doc.palette || {}), ...(doc.tokens?.colors || {}) };
-  for (const [k, v] of Object.entries(colors)) {
-    const val = v && typeof v === 'object' && 'value' in v ? v.value : v;
-    if (typeof val === 'string') {
-      tokenLines.push(`  --token-color-${k.replace(/[^a-zA-Z0-9_-]/g, '-')}: ${val};`);
+    const tokenLines = [];
+    const colors = { ...(doc.palette || {}), ...(doc.tokens?.colors || {}) };
+    for (const [k, v] of Object.entries(colors)) {
+        const val = v && typeof v === 'object' && 'value' in v ? v.value : v;
+        if (typeof val === 'string') {
+            tokenLines.push(`  --token-color-${k.replace(/[^a-zA-Z0-9_-]/g, '-')}: ${val};`);
+        }
     }
-  }
-  for (const [k, v] of Object.entries(doc.tokens?.spacing || {})) {
-    const val = v && typeof v === 'object' && 'value' in v ? v.value : v;
-    if (typeof val === 'number' || typeof val === 'string') {
-      tokenLines.push(`  --token-space-${k.replace(/[^a-zA-Z0-9_-]/g, '-')}: ${typeof val === 'number' ? `${val}px` : val};`);
+    for (const [k, v] of Object.entries(doc.tokens?.spacing || {})) {
+        const val = v && typeof v === 'object' && 'value' in v ? v.value : v;
+        if (typeof val === 'number' || typeof val === 'string') {
+            tokenLines.push(`  --token-space-${k.replace(/[^a-zA-Z0-9_-]/g, '-')}: ${typeof val === 'number' ? `${val}px` : val};`);
+        }
     }
-  }
-  for (const [k, v] of Object.entries(doc.tokens?.radius || {})) {
-    const val = v && typeof v === 'object' && 'value' in v ? v.value : v;
-    if (typeof val === 'number' || typeof val === 'string') {
-      tokenLines.push(`  --token-radius-${k.replace(/[^a-zA-Z0-9_-]/g, '-')}: ${typeof val === 'number' ? `${val}px` : val};`);
+    for (const [k, v] of Object.entries(doc.tokens?.radius || {})) {
+        const val = v && typeof v === 'object' && 'value' in v ? v.value : v;
+        if (typeof val === 'number' || typeof val === 'string') {
+            tokenLines.push(`  --token-radius-${k.replace(/[^a-zA-Z0-9_-]/g, '-')}: ${typeof val === 'number' ? `${val}px` : val};`);
+        }
     }
-  }
-
-  const mediaRules = layoutAnalysis.declaredBreakpoints
-    .filter(bp => typeof bp.width === 'number' && bp.width > 0)
-    .map(
-      bp => `
+    const mediaRules = layoutAnalysis.declaredBreakpoints
+        .filter(bp => typeof bp.width === 'number' && bp.width > 0)
+        .map(bp => `
 /* Declared Adaptive View: ${bp.name} (max-width: ${bp.width}px) */
 @media (max-width: ${bp.width}px) {
   body[data-adaptive-views="declared"] {
     --active-breakpoint: "${bp.id}";
   }
-}`
-    )
-    .join('\n');
-
-  return `/* Studio Runnable Code Export (v${CODE_EXPORTER_VERSION})
+}`)
+        .join('\n');
+    return `/* Studio Runnable Code Export (v${CODE_EXPORTER_VERSION})
  * Document: ${doc.documentId} (r${doc.revision}, hash: ${doc.contentHash})
  * Layout mode: ${layoutAnalysis.declaredBreakpoints.length > 0 ? 'Declared Adaptive Views' : 'Fixed Board (non-responsive)'}
  */
@@ -564,9 +557,8 @@ body {
 ${mediaRules}
 `;
 }
-
 function buildAppJs(bundlePayload) {
-  return `// Studio Standalone Runnable Export Runtime (v${CODE_EXPORTER_VERSION})
+    return `// Studio Standalone Runnable Export Runtime (v${CODE_EXPORTER_VERSION})
 // Bound to documentId=${bundlePayload.documentId} revision=${bundlePayload.revision} contentHash=${bundlePayload.contentHash}
 (function () {
   'use strict';
@@ -1582,220 +1574,199 @@ function buildAppJs(bundlePayload) {
 })();
 `;
 }
-
-export async function exportStudioDocumentToCode(
-  doc,
-  {
-    outDir,
-    projectDir = null,
-    persistence = null,
-    baseRevision = undefined,
-    registerExport = true,
-    resetRegistration = false,
-  } = {}
-) {
-  if (!doc || typeof doc !== 'object') {
-    throw Object.assign(new Error('缺少 Studio 权威文档'), { code: 'E_CODE_EXPORT_DOC_REQUIRED' });
-  }
-  if (!outDir || typeof outDir !== 'string') {
-    throw Object.assign(new Error('必须提供代码导出目录 outDir'), { code: 'E_CODE_EXPORT_OUTDIR_REQUIRED' });
-  }
-  if (baseRevision !== undefined && baseRevision !== null && Number(baseRevision) !== Number(doc.revision)) {
-    const scene = resolveDocumentScene(doc, { projectDir });
-    throw Object.assign(
-      new Error(`基准版本 r${baseRevision} 已过期（当前为 r${doc.revision}），拒绝将旧版本代码覆盖或登记为最新设计`),
-      {
-        code: 'E_STALE_REVISION',
-        currentRevision: doc.revision,
-        diagnostic: locateDiagnostic({ doc, scene, code: 'E_STALE_REVISION' }),
-      }
-    );
-  }
-
-  const absOutDir = isAbsolute(outDir) ? outDir : resolve(projectDir || process.cwd(), outDir);
-  mkdirSync(absOutDir, { recursive: true });
-  const assetsOutDir = join(absOutDir, 'assets');
-
-  // Resolve default scene + inactive dynamic panel states
-  const scene = resolveDocumentScene(doc, { projectDir });
-  const rawVisMap = collectRawVisibilityMap(doc);
-  const layoutAnalysis = analyzeDocumentInteractionsAndLayout(doc);
-  const copiedFonts = [], fontCss = [];
-  for (const font of Object.values(computeDependencyClosure(doc, { projectDir }).fonts.used)) {
-    if (font.source !== 'project' || !font.relativePath || !font.filePresentInProject) continue;
-    const dest = join(absOutDir, font.relativePath);
-    mkdirSync(dirname(dest), { recursive: true });
-    copyFileSync(join(projectDir, font.relativePath), dest);
-    const bytes = readFileSync(dest);
-    copiedFonts.push({ family: font.family, exportedPath: font.relativePath, bytes: bytes.length, sha256: sha256(bytes) });
-    fontCss.push(`@font-face{font-family:${JSON.stringify(font.family)};src:url(${JSON.stringify(font.relativePath)});font-display:block;}`);
-  }
-
-  // Copy referenced local assets into <outDir>/assets/ and build relative rewrite map
-  const assetRewriteMap = new Map();
-  const copiedAssets = [];
-  const missingAssets = [];
-  const seenSrc = new Set();
-
-  for (const pg of scene.pages || []) {
-    for (const n of pg.nodes || []) {
-      if (n.type === 'image' && typeof n.src === 'string' && n.src.trim()) {
-        seenSrc.add(n.src.trim());
-      }
+export async function exportStudioDocumentToCode(doc, { outDir, projectDir = null, persistence = null, baseRevision = undefined, registerExport = true, resetRegistration = false, } = {}) {
+    if (!doc || typeof doc !== 'object') {
+        throw Object.assign(new Error('缺少 Studio 权威文档'), { code: 'E_CODE_EXPORT_DOC_REQUIRED' });
     }
-  }
-  for (const [srcKey] of Object.entries(doc.assetsManifest || {})) {
-    if (srcKey) seenSrc.add(srcKey);
-  }
-
-  let assetIdx = 0;
-  for (const rawSrc of seenSrc) {
-    if (/^(https?:|data:)/i.test(rawSrc)) continue;
-    const candidates = [
-      projectDir ? resolve(projectDir, rawSrc) : null,
-      isAbsolute(rawSrc) ? rawSrc : null,
-    ].filter(Boolean);
-    const foundPath = candidates.find(p => existsSync(p));
-    if (!foundPath) {
-      missingAssets.push({ src: rawSrc, reason: '源文件不存在' });
-      continue;
+    if (!outDir || typeof outDir !== 'string') {
+        throw Object.assign(new Error('必须提供代码导出目录 outDir'), { code: 'E_CODE_EXPORT_OUTDIR_REQUIRED' });
     }
-    mkdirSync(assetsOutDir, { recursive: true });
-    assetIdx++;
-    const ext = extname(foundPath) || '.png';
-    const base = basename(foundPath, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
-    const relTarget = `assets/${assetIdx}_${base}${ext}`;
-    const destPath = join(absOutDir, relTarget);
-    copyFileSync(foundPath, destPath);
-    const bytes = readFileSync(destPath);
-    assetRewriteMap.set(rawSrc, relTarget);
-    copiedAssets.push({
-      originalSrc: rawSrc,
-      exportedPath: relTarget,
-      bytes: bytes.length,
-      sha256: sha256(bytes),
-    });
-  }
-
-  // Build serialized pages, dynamic panel state subtrees, and repeater template blueprints
-  const serializedPages = [];
-  for (const pg of scene.pages || []) {
-    const enrichNode = n => {
-      const ownVisible = rawVisMap.has(n.scopedId) ? rawVisMap.get(n.scopedId) : Boolean(n.visible);
-      const rawText = rawVisMap.get(`rawText:${n.scopedId}`) || n.text || '';
-      return serializePageNode(
-        { ...n, ownVisible, rawText, sourceSizing: rawVisMap.get(`sizing:${n.scopedId}`) },
-        assetRewriteMap,
-        layoutAnalysis.nodeUnsupportedMap,
-        layoutAnalysis.nodeSupportedMap
-      );
-    };
-
-    const allNodes = (pg.nodes || []).map(enrichNode);
-    const repeaterTemplates = {};
-    for (const n of pg.nodes || []) {
-      if (n.type === 'repeater') {
-        const tplPrefix = `${n.scopedId}/template/`;
-        const tplChildren = allNodes
-          .filter(cand => cand.repeaterTemplateOwner === n.scopedId && cand.scopedId !== `${n.scopedId}/template/${cand.id}`)
-          .map(cand => ({
-            ...cand,
-            relX: cand.x - n.x,
-            relY: cand.y - n.y,
-          }));
-        // If template root itself has children or is a single widget
-        const allTplNodes = allNodes
-          .filter(cand => cand.repeaterTemplateOwner === n.scopedId && cand.scopedId.startsWith(tplPrefix))
-          .map(cand => ({
-            ...cand,
-            relX: cand.x - n.x,
-            relY: cand.y - n.y,
-          }));
-        repeaterTemplates[n.id] = tplChildren.length > 0 ? tplChildren : allTplNodes;
-      }
-    }
-
-    const panelStateNodes = {};
-    const panelNodes = (pg.nodes || []).filter(n => n.type === 'dynamic-panel' && Array.isArray(n.states) && n.states.length > 0);
-    for (const pNode of panelNodes) {
-      panelStateNodes[pNode.id] = {};
-      for (const st of pNode.states) {
-        const stScene = resolveDocumentScene(doc, {
-          projectDir,
-          activePanelStates: {
-            [pNode.scopedId]: st.id,
-            [`${pg.id}/${pNode.id}`]: st.id,
-            [pNode.id]: st.id,
-          },
+    if (baseRevision !== undefined && baseRevision !== null && Number(baseRevision) !== Number(doc.revision)) {
+        const scene = resolveDocumentScene(doc, { projectDir });
+        throw Object.assign(new Error(`基准版本 r${baseRevision} 已过期（当前为 r${doc.revision}），拒绝将旧版本代码覆盖或登记为最新设计`), {
+            code: 'E_STALE_REVISION',
+            currentRevision: doc.revision,
+            diagnostic: locateDiagnostic({ doc, scene, code: 'E_STALE_REVISION' }),
         });
-        const stPg = stScene.pages.find(x => x.id === pg.id);
-        const stSubtree = (stPg?.nodes || [])
-          .filter(cand => cand.panelOwnerId === pNode.id)
-          .map(enrichNode);
-        panelStateNodes[pNode.id][st.id] = stSubtree;
-      }
     }
-
-    serializedPages.push({
-      id: pg.id,
-      name: pg.name || pg.id,
-      domain: pg.domain || doc.domain || 'web',
-      device: pg.device || null,
-      board: pg.board,
-      nodes: allNodes,
-      repeaterTemplates,
-      panelStateNodes,
-    });
-  }
-
-  // Datasets closure (combine doc.datasets + any inline repeater rows)
-  const datasets = {};
-  for (const [dsName, ds] of Object.entries(doc.datasets || {})) {
-    const rows = Array.isArray(ds?.rows) ? structuredClone(ds.rows) : Array.isArray(ds) ? structuredClone(ds) : [];
-    datasets[dsName] = rows;
-  }
-  // Inline repeater rows live on the raw document tree (full rows, not the
-  // paged view carried by resolved scene nodes); walk it for the closure.
-  const collectInlineDatasets = node => {
-    if (!node || typeof node !== 'object') return;
-    if (node.type === 'repeater') {
-      const key = repeaterDatasetName(node);
-      const inline = repeaterInlineRows(node);
-      if (key && inline.length && !datasets[key]) datasets[key] = structuredClone(inline);
-      else if (key && !inline.length && Array.isArray(node.rows) && !datasets[key]) datasets[key] = structuredClone(node.rows);
+    const absOutDir = isAbsolute(outDir) ? outDir : resolve(projectDir || process.cwd(), outDir);
+    mkdirSync(absOutDir, { recursive: true });
+    const assetsOutDir = join(absOutDir, 'assets');
+    // Resolve default scene + inactive dynamic panel states
+    const scene = resolveDocumentScene(doc, { projectDir });
+    const rawVisMap = collectRawVisibilityMap(doc);
+    const layoutAnalysis = analyzeDocumentInteractionsAndLayout(doc);
+    const copiedFonts = [], fontCss = [];
+    for (const font of Object.values(computeDependencyClosure(doc, { projectDir }).fonts.used)) {
+        if (font.source !== 'project' || !font.relativePath || !font.filePresentInProject)
+            continue;
+        const dest = join(absOutDir, font.relativePath);
+        mkdirSync(dirname(dest), { recursive: true });
+        copyFileSync(join(projectDir, font.relativePath), dest);
+        const bytes = readFileSync(dest);
+        copiedFonts.push({ family: font.family, exportedPath: font.relativePath, bytes: bytes.length, sha256: sha256(bytes) });
+        fontCss.push(`@font-face{font-family:${JSON.stringify(font.family)};src:url(${JSON.stringify(font.relativePath)});font-display:block;}`);
     }
-    for (const ch of node.children || []) collectInlineDatasets(ch);
-    for (const st of node.states || []) if (st.root) collectInlineDatasets(st.root);
-    if (node.template) collectInlineDatasets(node.template);
-  };
-  for (const pg of doc.pages || []) collectInlineDatasets(pg.root);
-
-  const bundlePayload = {
-    schemaVersion: 1,
-    exporterVersion: CODE_EXPORTER_VERSION,
-    documentId: doc.documentId,
-    name: doc.name || 'Studio Prototype',
-    revision: doc.revision,
-    contentHash: doc.contentHash,
-    domain: doc.domain || 'web',
-    variables: structuredClone(doc.variables || {}),
-    datasets,
-    pages: serializedPages,
-  };
-
-  const firstPage = serializedPages[0] || {
-    id: 'home',
-    name: '首页',
-    board: { screenW: 1440, screenH: 900 },
-    nodes: [],
-  };
-  const initialNodesHtml = firstPage.nodes.map(renderStaticInitialNodeHtml).filter(Boolean).join('\n      ');
-  const isFixedBoard = layoutAnalysis.declaredBreakpoints.length === 0;
-  const boardModeLabel = isFixedBoard
-    ? `固定画板 ${firstPage.board.screenW}×${firstPage.board.screenH} (非伪响应式)`
-    : `已声明断点 (${layoutAnalysis.declaredBreakpoints.map(b => `${b.name}:${b.width}px`).join(', ')})`;
-
-  const indexHtml = `<!DOCTYPE html>
+    // Copy referenced local assets into <outDir>/assets/ and build relative rewrite map
+    const assetRewriteMap = new Map();
+    const copiedAssets = [];
+    const missingAssets = [];
+    const seenSrc = new Set();
+    for (const pg of scene.pages || []) {
+        for (const n of pg.nodes || []) {
+            if (n.type === 'image' && typeof n.src === 'string' && n.src.trim()) {
+                seenSrc.add(n.src.trim());
+            }
+        }
+    }
+    for (const [srcKey] of Object.entries(doc.assetsManifest || {})) {
+        if (srcKey)
+            seenSrc.add(srcKey);
+    }
+    let assetIdx = 0;
+    for (const rawSrc of seenSrc) {
+        if (/^(https?:|data:)/i.test(rawSrc))
+            continue;
+        const candidates = [
+            projectDir ? resolve(projectDir, rawSrc) : null,
+            isAbsolute(rawSrc) ? rawSrc : null,
+        ].filter(Boolean);
+        const foundPath = candidates.find(p => existsSync(p));
+        if (!foundPath) {
+            missingAssets.push({ src: rawSrc, reason: '源文件不存在' });
+            continue;
+        }
+        mkdirSync(assetsOutDir, { recursive: true });
+        assetIdx++;
+        const ext = extname(foundPath) || '.png';
+        const base = basename(foundPath, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
+        const relTarget = `assets/${assetIdx}_${base}${ext}`;
+        const destPath = join(absOutDir, relTarget);
+        copyFileSync(foundPath, destPath);
+        const bytes = readFileSync(destPath);
+        assetRewriteMap.set(rawSrc, relTarget);
+        copiedAssets.push({
+            originalSrc: rawSrc,
+            exportedPath: relTarget,
+            bytes: bytes.length,
+            sha256: sha256(bytes),
+        });
+    }
+    // Build serialized pages, dynamic panel state subtrees, and repeater template blueprints
+    const serializedPages = [];
+    for (const pg of scene.pages || []) {
+        const enrichNode = n => {
+            const ownVisible = rawVisMap.has(n.scopedId) ? rawVisMap.get(n.scopedId) : Boolean(n.visible);
+            const rawText = rawVisMap.get(`rawText:${n.scopedId}`) || n.text || '';
+            return serializePageNode({ ...n, ownVisible, rawText, sourceSizing: rawVisMap.get(`sizing:${n.scopedId}`) }, assetRewriteMap, layoutAnalysis.nodeUnsupportedMap, layoutAnalysis.nodeSupportedMap);
+        };
+        const allNodes = (pg.nodes || []).map(enrichNode);
+        const repeaterTemplates = {};
+        for (const n of pg.nodes || []) {
+            if (n.type === 'repeater') {
+                const tplPrefix = `${n.scopedId}/template/`;
+                const tplChildren = allNodes
+                    .filter(cand => cand.repeaterTemplateOwner === n.scopedId && cand.scopedId !== `${n.scopedId}/template/${cand.id}`)
+                    .map(cand => ({
+                    ...cand,
+                    relX: cand.x - n.x,
+                    relY: cand.y - n.y,
+                }));
+                // If template root itself has children or is a single widget
+                const allTplNodes = allNodes
+                    .filter(cand => cand.repeaterTemplateOwner === n.scopedId && cand.scopedId.startsWith(tplPrefix))
+                    .map(cand => ({
+                    ...cand,
+                    relX: cand.x - n.x,
+                    relY: cand.y - n.y,
+                }));
+                repeaterTemplates[n.id] = tplChildren.length > 0 ? tplChildren : allTplNodes;
+            }
+        }
+        const panelStateNodes = {};
+        const panelNodes = (pg.nodes || []).filter(n => n.type === 'dynamic-panel' && Array.isArray(n.states) && n.states.length > 0);
+        for (const pNode of panelNodes) {
+            panelStateNodes[pNode.id] = {};
+            for (const st of pNode.states) {
+                const stScene = resolveDocumentScene(doc, {
+                    projectDir,
+                    activePanelStates: {
+                        [pNode.scopedId]: st.id,
+                        [`${pg.id}/${pNode.id}`]: st.id,
+                        [pNode.id]: st.id,
+                    },
+                });
+                const stPg = stScene.pages.find(x => x.id === pg.id);
+                const stSubtree = (stPg?.nodes || [])
+                    .filter(cand => cand.panelOwnerId === pNode.id)
+                    .map(enrichNode);
+                panelStateNodes[pNode.id][st.id] = stSubtree;
+            }
+        }
+        serializedPages.push({
+            id: pg.id,
+            name: pg.name || pg.id,
+            domain: pg.domain || doc.domain || 'web',
+            device: pg.device || null,
+            board: pg.board,
+            nodes: allNodes,
+            repeaterTemplates,
+            panelStateNodes,
+        });
+    }
+    // Datasets closure (combine doc.datasets + any inline repeater rows)
+    const datasets = {};
+    for (const [dsName, ds] of Object.entries(doc.datasets || {})) {
+        const rows = Array.isArray(ds?.rows) ? structuredClone(ds.rows) : Array.isArray(ds) ? structuredClone(ds) : [];
+        datasets[dsName] = rows;
+    }
+    // Inline repeater rows live on the raw document tree (full rows, not the
+    // paged view carried by resolved scene nodes); walk it for the closure.
+    const collectInlineDatasets = node => {
+        if (!node || typeof node !== 'object')
+            return;
+        if (node.type === 'repeater') {
+            const key = repeaterDatasetName(node);
+            const inline = repeaterInlineRows(node);
+            if (key && inline.length && !datasets[key])
+                datasets[key] = structuredClone(inline);
+            else if (key && !inline.length && Array.isArray(node.rows) && !datasets[key])
+                datasets[key] = structuredClone(node.rows);
+        }
+        for (const ch of node.children || [])
+            collectInlineDatasets(ch);
+        for (const st of node.states || [])
+            if (st.root)
+                collectInlineDatasets(st.root);
+        if (node.template)
+            collectInlineDatasets(node.template);
+    };
+    for (const pg of doc.pages || [])
+        collectInlineDatasets(pg.root);
+    const bundlePayload = {
+        schemaVersion: 1,
+        exporterVersion: CODE_EXPORTER_VERSION,
+        documentId: doc.documentId,
+        name: doc.name || 'Studio Prototype',
+        revision: doc.revision,
+        contentHash: doc.contentHash,
+        domain: doc.domain || 'web',
+        variables: structuredClone(doc.variables || {}),
+        datasets,
+        pages: serializedPages,
+    };
+    const firstPage = serializedPages[0] || {
+        id: 'home',
+        name: '首页',
+        board: { screenW: 1440, screenH: 900 },
+        nodes: [],
+    };
+    const initialNodesHtml = firstPage.nodes.map(renderStaticInitialNodeHtml).filter(Boolean).join('\n      ');
+    const isFixedBoard = layoutAnalysis.declaredBreakpoints.length === 0;
+    const boardModeLabel = isFixedBoard
+        ? `固定画板 ${firstPage.board.screenW}×${firstPage.board.screenH} (非伪响应式)`
+        : `已声明断点 (${layoutAnalysis.declaredBreakpoints.map(b => `${b.name}:${b.width}px`).join(', ')})`;
+    const indexHtml = `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
@@ -1812,10 +1783,7 @@ export async function exportStudioDocumentToCode(
     </div>
     <nav class="export-page-tabs" id="studio-export-tabs">
       ${serializedPages
-        .map(
-          (p, idx) =>
-            `<button type="button" class="export-page-tab${idx === 0 ? ' active' : ''}" data-page-tab="${escapeHtml(p.id)}">${escapeHtml(p.name)}</button>`
-        )
+        .map((p, idx) => `<button type="button" class="export-page-tab${idx === 0 ? ' active' : ''}" data-page-tab="${escapeHtml(p.id)}">${escapeHtml(p.name)}</button>`)
         .join('')}
     </nav>
   </header>
@@ -1828,21 +1796,17 @@ export async function exportStudioDocumentToCode(
 </body>
 </html>
 `;
-
-  const stylesCss = fontCss.join('\n') + '\n' + buildStylesCss(doc, layoutAnalysis);
-  const appJs = buildAppJs(bundlePayload);
-
-  const indexHtmlPath = join(absOutDir, 'index.html');
-  const stylesCssPath = join(absOutDir, 'styles.css');
-  const appJsPath = join(absOutDir, 'app.js');
-  const readmePath = join(absOutDir, 'README.md');
-  const manifestPath = join(absOutDir, 'manifest.json');
-
-  writeFileSync(indexHtmlPath, indexHtml, 'utf8');
-  writeFileSync(stylesCssPath, stylesCss, 'utf8');
-  writeFileSync(appJsPath, appJs, 'utf8');
-
-  const readmeContent = `# ${doc.name || 'Studio 可运行代码工程包'}
+    const stylesCss = fontCss.join('\n') + '\n' + buildStylesCss(doc, layoutAnalysis);
+    const appJs = buildAppJs(bundlePayload);
+    const indexHtmlPath = join(absOutDir, 'index.html');
+    const stylesCssPath = join(absOutDir, 'styles.css');
+    const appJsPath = join(absOutDir, 'app.js');
+    const readmePath = join(absOutDir, 'README.md');
+    const manifestPath = join(absOutDir, 'manifest.json');
+    writeFileSync(indexHtmlPath, indexHtml, 'utf8');
+    writeFileSync(stylesCssPath, stylesCss, 'utf8');
+    writeFileSync(appJsPath, appJs, 'utf8');
+    const readmeContent = `# ${doc.name || 'Studio 可运行代码工程包'}
 
 - **工程 ID (\`documentId\`)**: \`${doc.documentId}\`
 - **绑定版本 (\`revision\`)**: \`r${doc.revision}\`
@@ -1869,142 +1833,146 @@ export async function exportStudioDocumentToCode(
 - \`manifest.json\`: 版本绑定、文件 SHA-256 指纹、资源闭包与不支持交互逐项清单
 - \`assets/\`: 离线打包的本地图片与媒体资源
 `;
-  writeFileSync(readmePath, readmeContent, 'utf8');
-
-  const filesChecksums = {
-    'index.html': sha256(Buffer.from(indexHtml, 'utf8')),
-    'styles.css': sha256(Buffer.from(stylesCss, 'utf8')),
-    'app.js': sha256(Buffer.from(appJs, 'utf8')),
-    'README.md': sha256(Buffer.from(readmeContent, 'utf8')),
-  };
-  for (const asset of copiedAssets) {
-    filesChecksums[asset.exportedPath] = asset.sha256;
-  }
-  for (const font of copiedFonts) filesChecksums[font.exportedPath] = font.sha256;
-
-  const manifest = {
-    schemaVersion: 1,
-    kind: 'studio-code-export',
-    exporterVersion: CODE_EXPORTER_VERSION,
-    exportedAt: new Date().toISOString(),
-    documentId: doc.documentId,
-    name: doc.name || 'Studio Prototype',
-    revision: doc.revision,
-    contentHash: doc.contentHash,
-    entryHtml: 'index.html',
-    files: filesChecksums,
-    pages: serializedPages.map(p => ({
-      id: p.id,
-      name: p.name,
-      board: { w: p.board.screenW, h: p.board.screenH },
-      nodeCount: p.nodes.length,
-    })),
-    layoutMode: {
-      fixedBoard: isFixedBoard,
-      responsiveFabricated: false,
-      boards: serializedPages.map(p => ({ pageId: p.id, w: p.board.screenW, h: p.board.screenH })),
-      declaredBreakpoints: layoutAnalysis.declaredBreakpoints,
-      constraintNodeCount: layoutAnalysis.constraintNodes.length,
-      constraints: layoutAnalysis.constraintNodes,
-    },
-    interactionCompatibility: {
-      totalInteractions: layoutAnalysis.supported.length + layoutAnalysis.unsupported.length,
-      supportedCount: layoutAnalysis.supported.length,
-      unsupportedCount: layoutAnalysis.unsupported.length,
-      fakeButtonsEmitted: 0,
-      supported: layoutAnalysis.supported,
-      unsupported: layoutAnalysis.unsupported,
-    },
-    // 视觉属性导出口径（S3-1）：此前 threeDTransform 被静默丢弃且无披露，现按原值导出为 CSS transform。
-    visualCompatibility: {
-      threeDTransform: '按节点原值导出为内联 CSS transform（不丢弃）',
-      rotation: '导出为 transform: rotate(<deg>deg)',
-      ambiguity: 'threeDTransform 与 rotation 同时存在时只输出 threeDTransform',
-    },
-    assets: copiedAssets,
-    fonts: copiedFonts,
-    missingAssets,
-    fontDiagnostics: scene.fontDiagnostics || [],
-    roundtripPolicy: {
-      registersToProject: true,
-      arbitraryHandEditedHtmlLosslessWritebackPromised: false,
-    },
-  };
-
-  writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
-
-  let registration = null;
-  const warnings = [];
-  let registrationReset = null;
-  const targetStudioDir = persistence?.studioDir || (projectDir ? join(projectDir, '.studio') : null);
-  if (registerExport && targetStudioDir) {
-    mkdirSync(targetStudioDir, { recursive: true });
-    const regPath = join(targetStudioDir, 'code-exports.json');
-    let history = { exports: [] };
-    let corrupted = false;
-    if (existsSync(regPath)) {
-      try {
-        const parsed = JSON.parse(readFileSync(regPath, 'utf8'));
-        if (parsed && typeof parsed === 'object' && Array.isArray(parsed.exports)) history = parsed;
-        else corrupted = true;
-      } catch { corrupted = true; }
-      if (corrupted || resetRegistration) {
-        // 登记文件损坏或调用方要求重置时，先保留原文件再清空，避免静默丢弃历史。
-        const backupPath = `${regPath}.bak-${Date.now()}`;
-        try {
-          copyFileSync(regPath, backupPath);
-          registrationReset = { backupPath };
-        } catch {
-          registrationReset = { backupPath: null };
-        }
-      }
-    }
-    if (corrupted || resetRegistration) history = { exports: [] };
-    const exportsList = Array.isArray(history.exports) ? history.exports : [];
-    // contentHash 作为登记主键：revision 会跨重启漂移（启动规范化会改写文档），不能用来判定新旧。
-    const sameContent = doc.contentHash
-      ? exportsList.find(e => e && e.contentHash === doc.contentHash && (!e.documentId || e.documentId === doc.documentId))
-      : null;
-    const registeredEntry = {
-      documentId: doc.documentId,
-      revision: doc.revision,
-      contentHash: doc.contentHash,
-      outDir: absOutDir,
-      manifestPath,
-      exportedAt: manifest.exportedAt,
-      manifestSha256: sha256(readFileSync(manifestPath)),
+    writeFileSync(readmePath, readmeContent, 'utf8');
+    const filesChecksums = {
+        'index.html': sha256(Buffer.from(indexHtml, 'utf8')),
+        'styles.css': sha256(Buffer.from(stylesCss, 'utf8')),
+        'app.js': sha256(Buffer.from(appJs, 'utf8')),
+        'README.md': sha256(Buffer.from(readmeContent, 'utf8')),
     };
-    if (sameContent) {
-      registration = { ...sameContent, ...registeredEntry, reused: true };
-      history.exports = exportsList.map(e => (e === sameContent ? registration : e));
-    } else {
-      const latestRegisteredRev = Math.max(0, ...exportsList.map(e => Number(e.revision || 0)));
-      if (Number(doc.revision) < latestRegisteredRev) {
-        warnings.push({
-          code: 'W_CODE_EXPORT_REVISION_ROLLBACK',
-          message: `本次导出的修订号 r${doc.revision} 低于已登记的最新修订号 r${latestRegisteredRev}；内容哈希已变化，按新内容登记`,
-          latestRegisteredRevision: latestRegisteredRev,
-        });
-      }
-      registration = { ...registeredEntry, reused: false };
-      history.exports = [...exportsList, registration];
+    for (const asset of copiedAssets) {
+        filesChecksums[asset.exportedPath] = asset.sha256;
     }
-    history.latest = registration;
-    writeFileSync(regPath, JSON.stringify(history, null, 2) + '\n', 'utf8');
-  }
-
-  return {
-    ok: true,
-    outDir: absOutDir,
-    entryHtmlPath: indexHtmlPath,
-    manifestPath,
-    readmePath,
-    documentId: doc.documentId,
-    revision: doc.revision,
-    contentHash: doc.contentHash,
-    manifest,
-    registration,
-    ...(registrationReset ? { registrationReset } : {}),
-    ...(warnings.length ? { warnings } : {}),
-  };
+    for (const font of copiedFonts)
+        filesChecksums[font.exportedPath] = font.sha256;
+    const manifest = {
+        schemaVersion: 1,
+        kind: 'studio-code-export',
+        exporterVersion: CODE_EXPORTER_VERSION,
+        exportedAt: new Date().toISOString(),
+        documentId: doc.documentId,
+        name: doc.name || 'Studio Prototype',
+        revision: doc.revision,
+        contentHash: doc.contentHash,
+        entryHtml: 'index.html',
+        files: filesChecksums,
+        pages: serializedPages.map(p => ({
+            id: p.id,
+            name: p.name,
+            board: { w: p.board.screenW, h: p.board.screenH },
+            nodeCount: p.nodes.length,
+        })),
+        layoutMode: {
+            fixedBoard: isFixedBoard,
+            responsiveFabricated: false,
+            boards: serializedPages.map(p => ({ pageId: p.id, w: p.board.screenW, h: p.board.screenH })),
+            declaredBreakpoints: layoutAnalysis.declaredBreakpoints,
+            constraintNodeCount: layoutAnalysis.constraintNodes.length,
+            constraints: layoutAnalysis.constraintNodes,
+        },
+        interactionCompatibility: {
+            totalInteractions: layoutAnalysis.supported.length + layoutAnalysis.unsupported.length,
+            supportedCount: layoutAnalysis.supported.length,
+            unsupportedCount: layoutAnalysis.unsupported.length,
+            fakeButtonsEmitted: 0,
+            supported: layoutAnalysis.supported,
+            unsupported: layoutAnalysis.unsupported,
+        },
+        // 视觉属性导出口径（S3-1）：此前 threeDTransform 被静默丢弃且无披露，现按原值导出为 CSS transform。
+        visualCompatibility: {
+            threeDTransform: '按节点原值导出为内联 CSS transform（不丢弃）',
+            rotation: '导出为 transform: rotate(<deg>deg)',
+            ambiguity: 'threeDTransform 与 rotation 同时存在时只输出 threeDTransform',
+        },
+        assets: copiedAssets,
+        fonts: copiedFonts,
+        missingAssets,
+        fontDiagnostics: scene.fontDiagnostics || [],
+        roundtripPolicy: {
+            registersToProject: true,
+            arbitraryHandEditedHtmlLosslessWritebackPromised: false,
+        },
+    };
+    writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
+    let registration = null;
+    const warnings = [];
+    let registrationReset = null;
+    const targetStudioDir = persistence?.studioDir || (projectDir ? join(projectDir, '.studio') : null);
+    if (registerExport && targetStudioDir) {
+        mkdirSync(targetStudioDir, { recursive: true });
+        const regPath = join(targetStudioDir, 'code-exports.json');
+        let history = { exports: [] };
+        let corrupted = false;
+        if (existsSync(regPath)) {
+            try {
+                const parsed = JSON.parse(readFileSync(regPath, 'utf8'));
+                if (parsed && typeof parsed === 'object' && Array.isArray(parsed.exports))
+                    history = parsed;
+                else
+                    corrupted = true;
+            }
+            catch {
+                corrupted = true;
+            }
+            if (corrupted || resetRegistration) {
+                // 登记文件损坏或调用方要求重置时，先保留原文件再清空，避免静默丢弃历史。
+                const backupPath = `${regPath}.bak-${Date.now()}`;
+                try {
+                    copyFileSync(regPath, backupPath);
+                    registrationReset = { backupPath };
+                }
+                catch {
+                    registrationReset = { backupPath: null };
+                }
+            }
+        }
+        if (corrupted || resetRegistration)
+            history = { exports: [] };
+        const exportsList = Array.isArray(history.exports) ? history.exports : [];
+        // contentHash 作为登记主键：revision 会跨重启漂移（启动规范化会改写文档），不能用来判定新旧。
+        const sameContent = doc.contentHash
+            ? exportsList.find(e => e && e.contentHash === doc.contentHash && (!e.documentId || e.documentId === doc.documentId))
+            : null;
+        const registeredEntry = {
+            documentId: doc.documentId,
+            revision: doc.revision,
+            contentHash: doc.contentHash,
+            outDir: absOutDir,
+            manifestPath,
+            exportedAt: manifest.exportedAt,
+            manifestSha256: sha256(readFileSync(manifestPath)),
+        };
+        if (sameContent) {
+            registration = { ...sameContent, ...registeredEntry, reused: true };
+            history.exports = exportsList.map(e => (e === sameContent ? registration : e));
+        }
+        else {
+            const latestRegisteredRev = Math.max(0, ...exportsList.map(e => Number(e.revision || 0)));
+            if (Number(doc.revision) < latestRegisteredRev) {
+                warnings.push({
+                    code: 'W_CODE_EXPORT_REVISION_ROLLBACK',
+                    message: `本次导出的修订号 r${doc.revision} 低于已登记的最新修订号 r${latestRegisteredRev}；内容哈希已变化，按新内容登记`,
+                    latestRegisteredRevision: latestRegisteredRev,
+                });
+            }
+            registration = { ...registeredEntry, reused: false };
+            history.exports = [...exportsList, registration];
+        }
+        history.latest = registration;
+        writeFileSync(regPath, JSON.stringify(history, null, 2) + '\n', 'utf8');
+    }
+    return {
+        ok: true,
+        outDir: absOutDir,
+        entryHtmlPath: indexHtmlPath,
+        manifestPath,
+        readmePath,
+        documentId: doc.documentId,
+        revision: doc.revision,
+        contentHash: doc.contentHash,
+        manifest,
+        registration,
+        ...(registrationReset ? { registrationReset } : {}),
+        ...(warnings.length ? { warnings } : {}),
+    };
 }

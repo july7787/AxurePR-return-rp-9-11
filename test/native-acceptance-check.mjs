@@ -9,7 +9,8 @@ const predicate = steps => steps.includes('filter') && steps.includes('update');
 const reduced = await reduceSteps(['noise', 'filter', 'noise', 'update', 'noise'], predicate);
 assert.deepEqual(reduced.steps, ['filter', 'update']);
 assert(reduced.oneMinimal);
-for (let i = 0; i < reduced.steps.length; i++) assert(!predicate(reduced.steps.filter((_, n) => i !== n)));
+for (let i = 0; i < reduced.steps.length; i++)
+    assert(!predicate(reduced.steps.filter((_, n) => i !== n)));
 const capped = await reduceSteps(['a', 'b'], () => false, 1);
 assert.equal(capped.oneMinimal, false);
 console.log('8/8 native acceptance comparison and minimization contracts passed');
