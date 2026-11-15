@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="380" viewBox="0 0 1600 380" role="img" aria-labelledby="pipeline-title pipeline-desc">
+<title id="pipeline-title">return_rp pipeline: brief, RP/1 source, Studio canvas, native .rp, Axure and browser</title>
+<desc id="pipeline-desc">Five stages from a brief or screenshot to an editable native Axure file, with structure, browser and Axure roundtrip verification.</desc>
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+<path d="M0 0 L10 5 L0 10 z" fill="#D5FF70"/>
+</marker>
+</defs>
+<rect width="1600" height="380" rx="24" fill="#141819"/>
+<text x="56" y="54" fill="#A2ADA8" font-family="monospace" font-size="13" letter-spacing="2">WORKFLOW / IDEA TO EDITABLE .RP</text>
+<text x="56" y="92" fill="#F2F3EA" font-family="Inter, 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="24">一条链路，从模糊想法到可继续编辑的 Axure 工程。</text>
+<rect x="56" y="128" width="270" height="150" rx="14" fill="#1B2224" stroke="#2C3733"/>
+<text x="80" y="160" fill="#D5FF70" font-family="monospace" font-size="12" letter-spacing="1">01 / INPUT</text>
+<text x="80" y="196" fill="#F2F3EA" font-family="Inter, 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="19">需求 · 截图 · PRD</text>
+<text x="80" y="228" fill="#A2ADA8" font-family="Inter, 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="14">把目标、约束和参考</text>
+<text x="80" y="250" fill="#A2ADA8" font-family="Inter, 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="14">交给 Agent。</text>
+<line x1="332" y1="203" x2="350" y2="203" stroke="#D5FF70" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="356" y="128" width="270" height="150" rx="14" fill="#1B2224" stroke="#2C3733"/>
+<text x="380" y="160" fill="#D5FF70" font-family="monospace" font-size="12" letter-spacing="1">02 / SOURCE</text>
+<text x="380" y="196" fill="#F2F3EA" font-family="Inter, 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="19">RP/1 源码</text>
+<text x="380" y="228" fill="#A2ADA8" font-family="Inter, 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="14">页面、组件、变量与交互</text>
+<text x="380" y="250" fill="#A2ADA8" font-family="Inter, 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="14">写成可 diff 的源码。</text>
+<line x1="632" y1="203" x2="650" y2="203" stroke="#D5FF70" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="656" y="128" width="270" height="150" rx="14" fill="#1B2224" stroke="#2C3733"/>
+<text x="680" y="160" fill="#D5FF70" font-family="monospace" font-size="12" letter-spacing="1">03 / CANVAS</text>
+<text x="680" y="196" fill="#F2F3EA" font-family="Inter, 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="19">Studio 画布</text>
+<text x="680" y="228" fill="#A2ADA8" font-family="Inter, 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="14">AI 起稿，人点选、改字、</text>
+<text x="680" y="250" fill="#A2ADA8" font-family="Inter, 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="14">调布局，共同验证。</text>
+<line x1="932" y1="203" x2="950" y2="203" stroke="#D5FF70" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="956" y="128" width="270" height="150" rx="14" fill="#1B2224" stroke="#D5FF70" stroke-width="1.5"/>
+<text x="980" y="160" fill="#D5FF70" font-family="monospace" font-size="12" letter-spacing="1">04 / NATIVE</text>
+<text x="980" y="196" fill="#F2F3EA" font-family="Inter, 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="19">原生 .rp</text>
+<text x="980" y="228" fill="#A2ADA8" font-family="Inter, 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="14">RP 9 / RP 11 工程，</text>
+<text x="980" y="250" fill="#A2ADA8" font-family="Inter, 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="14">文字与控件保持独立。</text>
+<line x1="1232" y1="203" x2="1250" y2="203" stroke="#D5FF70" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="1256" y="128" width="270" height="150" rx="14" fill="#1B2224" stroke="#2C3733"/>
+<text x="1280" y="160" fill="#D5FF70" font-family="monospace" font-size="12" letter-spacing="1">05 / CONTINUE</text>
+<text x="1280" y="196" fill="#F2F3EA" font-family="Inter, 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="19">Axure · 浏览器</text>
+<text x="1280" y="228" fill="#A2ADA8" font-family="Inter, 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="14">继续编辑、运行预览，</text>
+<text x="1280" y="250" fill="#A2ADA8" font-family="Inter, 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="14">或导出 HTML / CSS / JS。</text>
+<text x="56" y="330" fill="#637E51" font-family="monospace" font-size="12" letter-spacing="1">STRUCTURE · BROWSER · AXURE ROUNDTRIP</text>
+<text x="1544" y="330" fill="#A2ADA8" font-family="monospace" font-size="12" text-anchor="end">THREE LAYERS OF VERIFICATION</text>
+</svg>

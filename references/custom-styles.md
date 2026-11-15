@@ -1,6 +1,6 @@
 # 原生自定义样式：改名与批量绑定
 
-对应 [issue #1](https://github.com/karlmoriaty/return_rp/issues/1) 和 [issue #2](https://github.com/karlmoriaty/return_rp/issues/2)。支持 `.rp` 与 `.rplib` 的已有原生样式定义；不提供凭空生成 `StyleSheet.CustomStyles` 对象的接口。元件局部 `MyStyle`、交互用样式与全局自定义样式定义是不同对象，不能混用创建方式。
+对应 [issue #1](https://github.com/karlmoriaty/AxurePR-return-rp/issues/1) 和 [issue #2](https://github.com/karlmoriaty/AxurePR-return-rp/issues/2)。支持 `.rp` 与 `.rplib` 的已有原生样式定义；不提供凭空生成 `StyleSheet.CustomStyles` 对象的接口。元件局部 `MyStyle`、交互用样式与全局自定义样式定义是不同对象，不能混用创建方式。
 
 推荐先在 Axure 的 Widget Style Manager 创建所需样式并保存，再用脚本批量绑定。结构校验通过不能证明新造的全局样式可被客户端接受。报告中关于内部签名、时间戳的解释尚未证实，本项目不将其作为已知根因。
 

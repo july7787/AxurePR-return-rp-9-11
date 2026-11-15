@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- 仓库更名为 `AxurePR-return-rp`，便于按 Axure / AxurePR 搜索；旧地址由 GitHub 重定向。
+- README 中英文重做：新增 30 秒概览、与通用 UI 生成器的对比、端到端工作流插图、RP 9 / RP 11 能力表、Windows 安装步骤、常见问题与项目结构；更新徽章、克隆地址与 MCP 配置路径。
+- 同步更新贡献指南、`package.json` 仓库地址与原生自定义样式文档中的 issue 链接。
+
 ## 1.3.4 — 2026-11-14
 
 - 收尾版本：版本能力矩阵中已无任一方向 `unsupported`，RP 9 / RP 11 的自动预览、图片离线生成、中继器动作、表单状态样式、Studio 局部创作和 CLI / MCP 入口均按同一接口提供。

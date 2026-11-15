@@ -2,6 +2,8 @@
 
 `cover.svg` 是为 return_rp 原创的新版品牌与工作流插画，采用炭黑、暖白、荧光绿及可编辑选框表现 RP/1 → Studio → Axure。标题字形已转为路径，适配 GitHub 图片显示；属于示意插画，MIT。
 
+`pipeline.svg` 是 README 用的工作流示意插画，按「输入 → RP/1 → Studio → 原生 .rp → Axure / 浏览器」五站展示同一条链路；不包含产品截图或验证数据，MIT。
+
 既有 `hero.svg` 为旧版原创编译工作台插画，保留其引用兼容，MIT。
 
 `showcase.png` 重新排版下方三张真实编译预览，统一手机框并保留完整屏幕内容，不改变界面文字或结果。画面含下述 CC BY-SA 4.0 摄影的派生预览，整张展示图按 CC BY-SA 4.0 提供。
