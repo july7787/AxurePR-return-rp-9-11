@@ -382,25 +382,27 @@ test('G01-3: revision/contentHash binding, stale baseRevision rejection, registr
         assert.equal(changedExp.ok, true);
         assert.equal(changedExp.registration.reused, false);
         assert.ok(changedExp.warnings?.some(w => w.code === 'W_CODE_EXPORT_REVISION_ROLLBACK'));
-        // 5. Async operation via studio_export_code(async: true)
-        const asyncOp = await studioHandlers.studio_export_code({
-            port: server.info.port,
-            async: true,
-            requestKey: 'g01-async-export-r2',
-            baseRevision: 2,
-        });
-        assert.ok(asyncOp.id.startsWith('op_'));
-        let opState = asyncOp;
-        for (let i = 0; i < 40 && !['succeeded', 'failed'].includes(opState.status); i++) {
-            await new Promise(r => setTimeout(r, 150));
-            opState = await studioHandlers.studio_operations({
+        // 5. Async operation via studio_export_code(async: true), POSIX process groups only
+        if (process.platform !== 'win32') {
+            const asyncOp = await studioHandlers.studio_export_code({
                 port: server.info.port,
-                action: 'get',
-                id: asyncOp.id,
+                async: true,
+                requestKey: 'g01-async-export-r2',
+                baseRevision: 2,
             });
+            assert.ok(asyncOp.id.startsWith('op_'));
+            let opState = asyncOp;
+            for (let i = 0; i < 40 && !['succeeded', 'failed'].includes(opState.status); i++) {
+                await new Promise(r => setTimeout(r, 150));
+                opState = await studioHandlers.studio_operations({
+                    port: server.info.port,
+                    action: 'get',
+                    id: asyncOp.id,
+                });
+            }
+            assert.equal(opState.status, 'succeeded', `Async export-code operation failed: ${JSON.stringify(opState)}`);
+            assert.ok(opState.resultSummary?.output && fs.existsSync(path.join(opState.resultSummary.output, 'index.html')));
         }
-        assert.equal(opState.status, 'succeeded', `Async export-code operation failed: ${JSON.stringify(opState)}`);
-        assert.ok(opState.resultSummary?.output && fs.existsSync(path.join(opState.resultSummary.output, 'index.html')));
     }
     finally {
         if (server?.studio)

@@ -248,9 +248,20 @@ try {
         const bin = join(work, 'fake-python-bin');
         mkdirSync(bin);
         const stub = { executable: '/isolated/python3', version: '3.14', imageModules: { PIL: true, numpy: false, scipy: false }, missingImageDependencies: ['numpy', 'scipy'] };
-        writeFileSync(join(bin, 'python3'), `#!${process.execPath}\nconsole.log(${JSON.stringify(JSON.stringify(stub))});\n`, { mode: 0o755 });
+        const env = { ...process.env, AXURE_WRITE_ROOT: work };
+        if (process.platform === 'win32') {
+            // Windows cannot spawn an extensionless shebang stub; shadow PIL so the dependency probe
+            // self-reports instead. Server-startup Python calls never import PIL.
+            mkdirSync(join(bin, 'PIL'));
+            writeFileSync(join(bin, 'PIL', '__init__.py'), `import json, os\nprint(${JSON.stringify(JSON.stringify(stub))}, flush=True)\nos._exit(0)\n`);
+            env.PYTHONPATH = bin;
+        }
+        else {
+            writeFileSync(join(bin, 'python3'), `#!${process.execPath}\nconsole.log(${JSON.stringify(JSON.stringify(stub))});\n`, { mode: 0o755 });
+            env.PATH = `${bin}:${process.env.PATH}`;
+        }
         const t = new StdioClientTransport({ command: process.execPath, args: [join(root, 'bin/mcp.mjs')],
-            env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, AXURE_WRITE_ROOT: work }, stderr: 'pipe' });
+            env, stderr: 'pipe' });
         const c = new Client({ name: 'dependency-diagnostic-check', version: '1.0.0' });
         try {
             await c.connect(t);

@@ -128,7 +128,13 @@ export function createPanel(file, { pageName, pageIndex, name, states = ['State 
   setProp(3221225577, { Width: width, Height: height });
   field(widget.body, 'fit-to-content').value = false;
   // A real PanelState record is required for every requested state. An empty GUID is not a state.
-  const stateTemplate = source.find(r => r.className === 'Axure:PanelState');
+  // 优先取没有交互事件的 PanelState 做骨架：教学工程里第一个 PanelState 可能带
+  // InteractionTreeMap 动作和 DiagramObjectPath，清空 diagram-objects 后会留下悬空路径。
+  const stateRecords = source.filter(r => r.className === 'Axure:PanelState');
+  const stateHasEvents = record => [...parsePayload(record).objects.values()]
+    .some(o => o.className === 'Axure:InteractionEvent');
+  const stateTemplate = stateRecords.find(r => !stateHasEvents(r)) ?? stateRecords[0];
+  if (!stateTemplate) throw new Error('Template has no PanelState record to clone');
   const packages = [], pairs = [];
   const stateNames = states.length ? states : ['State 1'];
   for (let stateIndex = 0; stateIndex < stateNames.length; stateIndex++) {

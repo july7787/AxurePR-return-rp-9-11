@@ -10,11 +10,13 @@ import { addInteractions } from '../scripts/ix-actions.mjs';
 import { readRp } from '../scripts/rp-read.mjs';
 import { readRecords } from '../scripts/rp-records.mjs';
 import { parsePayload, field } from '../scripts/parse-payload.mjs';
+import { resolveBlankTemplate } from '../scripts/blank-template.mjs';
+import { installRoot } from '../scripts/version.mjs';
 // Exercise real RP9 library widgets and the serialized expression graph. This is
 // structure plus installed JavaScript runtime evidence, not Axure GUI evidence.
-const rp9Root = '/Applications/Axure RP 9.app/Contents/Resources/DefaultSettings';
+const rp9Root = installRoot(9);
 const library = join(rp9Root, 'Libraries/Default.rplib');
-const blank = '/Users/karlmoriaty/Library/Application Support/zee-axure/templates/axure-rp9-blank.rp';
+const blank = resolveBlankTemplate(9);
 const work = mkdtempSync(join(tmpdir(), 'native-form-actions-'));
 let checks = 0;
 const check = (name, fn) => { fn(); checks++; console.log(`PASS ${name}`); };

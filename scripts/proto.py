@@ -3033,7 +3033,7 @@ def emit_tree_to_axvg(root_node, theme_dict, include_dynamic_panel_placeholders=
                     "color": resolve_color(node.get("color", "$ink"), theme_dict),
                     "align": node.get("align", "left"),
                     "textPaddingX": node.get("textPaddingX", 10),
-                    "rotation": node.get("rotation", 0),
+                    **({"rotation": node["rotation"]} if "rotation" in node else {}),
                 },
             })
             if cur_modal:
@@ -7676,7 +7676,6 @@ def _compile_spec_bundle(spec_data, out_dir, theme_override=None, base_dir=None,
             all_warnings.append(f"[{pa['pageName']}] {w_msg}")
 
     first_page = page_plans[0]
-    import sys; sys.stderr.write(f"[DBG] spec_data target={spec_data.get('target')} ir={spec_data.get('irVersion')}\n")
     compile_plan = {
         "name": spec_data.get("name", first_page["pageName"]),
         "domain": domain,

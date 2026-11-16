@@ -18,7 +18,13 @@ const principles = [
 export function verifyBenchmarkFiles(root = benchmarkRoot) {
   const hashes = JSON.parse(readFileSync(join(root, 'manifest.json'), 'utf8'));
   for (const [path, expected] of Object.entries(hashes.files)) {
-    if (!existsSync(join(root, path)) || createHash('sha256').update(readFileSync(join(root, path))).digest('hex') !== expected) {
+    const file = join(root, path);
+    if (!existsSync(file)) throw Object.assign(new Error(`标杆文件已变化，需重新审查：${path}`), { code: 'E_BENCHMARK_DRIFT' });
+    const data = readFileSync(file);
+    // Windows checkouts may materialize text as CRLF; manifests hash the LF form.
+    const digest = createHash('sha256').update(data).digest('hex');
+    const lfDigest = data.includes(0x0d) ? createHash('sha256').update(data.toString('binary').replace(/\r\n/g, '\n'), 'binary').digest('hex') : digest;
+    if (digest !== expected && lfDigest !== expected) {
       throw Object.assign(new Error(`标杆文件已变化，需重新审查：${path}`), { code: 'E_BENCHMARK_DRIFT' });
     }
   }

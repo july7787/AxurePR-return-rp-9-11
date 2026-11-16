@@ -8,6 +8,7 @@ import difflib
 import hashlib
 import json
 import math
+import os
 import re
 import string
 from rp_product import expand_product_spec, compute_product_impact
@@ -51,6 +52,11 @@ _RP_FONT_PATHS = [
     "/System/Library/Fonts/PingFang.ttc",
     "/System/Library/Fonts/STHeiti Light.ttc",
     "/System/Library/Fonts/Helvetica.ttc",
+    (os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts", "msyh.ttc")),
+    (os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts", "simsun.ttc")),
+    (os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts", "arial.ttf")),
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
 ]
 
 

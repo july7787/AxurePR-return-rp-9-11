@@ -12,6 +12,7 @@ import { validateInput } from '../studio/schema-validation.mjs';
 import { getReferencePack } from '../studio/reference-packs.mjs';
 import { sha256 } from '../studio/document.mjs';
 import { nativeTemplateSkipReason } from './host-capabilities.mjs';
+const asyncSkip = process.platform === 'win32' ? '异步操作依赖 POSIX 进程组；Windows 仅提供同步入口' : false;
 const delay = ms => new Promise(r => setTimeout(r, ms));
 async function until(check, timeout = 30000) { const deadline = Date.now() + timeout; while (Date.now() < deadline) {
     const value = await check();
@@ -20,9 +21,10 @@ async function until(check, timeout = 30000) { const deadline = Date.now() + tim
     await delay(30);
 } throw new Error('operation condition timeout'); }
 function project(t) { const dir = mkdtempSync(join(tmpdir(), 'studio-operation-')); t.after(() => rmSync(dir, { recursive: true, force: true })); const persistence = new StudioPersistence(dir); const { store } = persistence.initOrLoad(); const applied = store.applyTransaction({ baseRevision: store.appliedRevision, idempotencyKey: 'seed', commands: [{ type: 'addNode', node: { type: 'label', id: 'word', text: 'serendipity', w: 260, h: 60, fontSize: 30 } }, { type: 'addNode', node: { type: 'label', id: 'answer', text: '意外的发现', w: 260, h: 40, visible: false } }, { type: 'addNode', node: { type: 'button', id: 'reveal', text: '揭示', w: 260, h: 48, on: { click: [{ type: 'show', target: 'answer' }] } } }] }); assert(applied.ok, JSON.stringify(applied)); persistence.persistTransaction(store, store.history.at(-1)); return { dir, persistence, store, operations: new StudioOperations(dir) }; }
-test('async export is durable across service close, identity replay, stale source and process reopen', { timeout: 60000, skip: nativeTemplateSkipReason() }, async (t) => {
+test('async export is durable across service close, identity replay, stale source and process reopen', { timeout: 60000, skip: nativeTemplateSkipReason() || asyncSkip }, async (t) => {
     const { dir, store, operations } = project(t);
     let { studio } = await startStudioServer({ projectDir: dir, port: 0 });
+    t.after(() => studio.stop());
     const hash = store.doc.contentHash;
     const input = { async: true, requestKey: 'export-once', baseRevision: store.appliedRevision };
     const first = await (await fetch(studio.url + '/api/export-rp', { method: 'POST', body: JSON.stringify(input) })).json();
@@ -50,7 +52,7 @@ test('async export is durable across service close, identity replay, stale sourc
     assert.equal(listed.operations[0].resultSummary.output, completed.result.outRpPath);
     assert.equal((await operations.cancel({ id: first.id })).cancellation.accepted, false);
 });
-test('actual browser operation cancels quickly, confirms process exit and never changes the design', { timeout: 60000 }, async (t) => {
+test('actual browser operation cancels quickly, confirms process exit and never changes the design', { timeout: 60000, skip: asyncSkip }, async (t) => {
     const { dir, store, operations } = project(t), hash = store.doc.contentHash;
     const input = { async: true, requestKey: 'cancel-browser', baseRevision: store.appliedRevision, pageId: 'home', candidates: [{ id: 'one', commands: [{ type: 'setProperties', nodeId: 'word', properties: { fontSize: 32 } }] }], states: [{ id: 'many-clicks', steps: Array.from({ length: 30 }, () => ({ action: 'click', target: 'reveal', expect: { visible: { answer: true } } })) }] };
     const job = await operations.start('explore', input, store.doc);
@@ -69,7 +71,7 @@ test('actual browser operation cancels quickly, confirms process exit and never 
     assert.deepEqual(remaining, []);
     assert.equal((await operations.cancel({ requestKey: input.requestKey })).cancellation.accepted, false);
 });
-test('request contracts reject stale versions and changed resources before starting or overwriting', { timeout: 10000 }, async (t) => {
+test('request contracts reject stale versions and changed resources before starting or overwriting', { timeout: 10000, skip: asyncSkip }, async (t) => {
     const { dir, store, operations } = project(t);
     await assert.rejects(() => operations.start('export-rp', { async: true, requestKey: 'old', baseRevision: 1 }, store.doc), { code: 'E_OPERATION_STALE' });
     await assert.rejects(() => operations.start('export-rp', { async: true, requestKey: 'custom', baseRevision: store.doc.revision, outRpPath: join(dir, 'existing.rp') }, store.doc), { code: 'E_OPERATION_OUTPUT' });
@@ -91,7 +93,7 @@ test('request contracts reject stale versions and changed resources before start
     await assert.rejects(() => operations.start('export-rp', { async: true, requestKey: 'bad-bytes', baseRevision: store.appliedRevision }, store.doc), { code: 'E_OPERATION_RESOURCE_DRIFT' });
     assert.equal((await operations.list()).total, 0);
 });
-test('completed media stays uncommitted until registered in one source transaction', { timeout: 30000 }, async (t) => {
+test('completed media stays uncommitted until registered in one source transaction', { timeout: 30000, skip: asyncSkip }, async (t) => {
     const { dir, store, operations } = project(t), hash = store.doc.contentHash;
     const { studio } = await startStudioServer({ projectDir: dir, port: 0 });
     t.after(() => studio.stop());
@@ -110,7 +112,7 @@ test('completed media stays uncommitted until registered in one source transacti
     assert.equal(stale.sourceApplicability, 'stale-or-unavailable');
     assert.equal(stale.result.results[0].registerCommand, undefined);
 });
-test('abrupt worker interruption is durable and replay never launches a second worker', { timeout: 30000 }, async (t) => {
+test('abrupt worker interruption is durable and replay never launches a second worker', { timeout: 30000, skip: asyncSkip }, async (t) => {
     const { dir, store, operations } = project(t), hash = store.doc.contentHash;
     const args = { async: true, requestKey: 'interrupted', baseRevision: store.appliedRevision, pageId: 'home', candidates: [{ id: 'one', commands: [{ type: 'setProperties', nodeId: 'word', properties: { fontSize: 31 } }] }] };
     const job = await operations.start('explore', args, store.doc);

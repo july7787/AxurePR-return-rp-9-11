@@ -13,7 +13,8 @@ def load(root=ROOT):
     manifest = json.loads((root / 'manifest.json').read_text())
     tasks = []
     for name, digest in manifest['files'].items():
-        if hashlib.sha256((root / name).read_bytes()).hexdigest() != digest:
+        data = (root / name).read_bytes().replace(b"\r\n", b"\n")
+        if hashlib.sha256(data).hexdigest() != digest:
             raise ValueError('Frozen benchmark changed: ' + name)
         group = json.loads((root / name).read_text())
         assert len(group) == manifest[Path(name).stem]

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync, copyFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createEmptyStudioDocument } from '../studio/document.mjs';
 import { StudioDocumentStore } from '../studio/commands.mjs';
 import { resolveDocumentScene } from '../studio/scene-resolver.mjs';
@@ -481,33 +482,35 @@ test('three-way conflict detection, explicit resolution policies and HTTP/async 
     assert.equal(conflictRes.unresolvedConflicts[0].studioValue, 'Studio Headline');
     assert.equal(conflictRes.unresolvedConflicts[0].nativeValue, 'Native Headline');
     assert.equal(studio.store.doc.contentHash, hashBeforeSync);
-    // 2. Async operation preview via StudioOperations
-    const asyncJob = await (await fetch(`${studio.url}/api/sync-native`, {
-        method: 'POST',
-        body: JSON.stringify({
-            async: true,
-            requestKey: 'sync-preview-job',
-            baseRevision: studio.store.appliedRevision,
-            rpPath,
-            mode: 'preview',
-        }),
-    })).json();
-    assert.equal(asyncJob.ok, true);
-    assert(asyncJob.id);
-    let opDone = null;
-    for (let i = 0; i < 60; i++) {
-        const st = await studio.operations.get({ id: asyncJob.id, includeResult: true });
-        if (st.status === 'succeeded') {
-            opDone = st;
-            break;
+    // 2. Async operation preview via StudioOperations (POSIX process groups only)
+    if (process.platform !== 'win32') {
+        const asyncJob = await (await fetch(`${studio.url}/api/sync-native`, {
+            method: 'POST',
+            body: JSON.stringify({
+                async: true,
+                requestKey: 'sync-preview-job',
+                baseRevision: studio.store.appliedRevision,
+                rpPath,
+                mode: 'preview',
+            }),
+        })).json();
+        assert.equal(asyncJob.ok, true);
+        assert(asyncJob.id);
+        let opDone = null;
+        for (let i = 0; i < 60; i++) {
+            const st = await studio.operations.get({ id: asyncJob.id, includeResult: true });
+            if (st.status === 'succeeded') {
+                opDone = st;
+                break;
+            }
+            if (st.status === 'failed' || st.status === 'interrupted') {
+                throw new Error(`Async sync-native failed: ${JSON.stringify(st)}`);
+            }
+            await new Promise(r => setTimeout(r, 100));
         }
-        if (st.status === 'failed' || st.status === 'interrupted') {
-            throw new Error(`Async sync-native failed: ${JSON.stringify(st)}`);
-        }
-        await new Promise(r => setTimeout(r, 100));
+        assert(opDone);
+        assert.equal(opDone.result.summary.conflictCount, 1);
     }
-    assert(opDone);
-    assert.equal(opDone.result.summary.conflictCount, 1);
     // 3. Explicit per-node resolution: keep 'studio' for headline, apply non-conflicting native edit on subline
     const resolvedApply = await (await fetch(`${studio.url}/api/sync-native`, {
         method: 'POST',
@@ -645,7 +648,7 @@ r.trigger('branch','click')
 assert r.widgets[r.resolve_trigger_name('word')]['text']=='2'
 r.trigger('next','click');r.trigger('branch','click')
 assert r.widgets[r.resolve_trigger_name('word')]['text']=='Other'
-`, exported.sourcePath, new URL('..', import.meta.url).pathname], { encoding: 'utf8' });
+`, exported.sourcePath, fileURLToPath(new URL('..', import.meta.url))], { encoding: 'utf8' });
     assert.equal(checked.status, 0, checked.stderr || checked.stdout);
 });
 test('cross-page text updates and later local edits preserve two independent native values after navigation', { timeout: 60000, skip: nativeTemplateSkipReason() }, async (t) => {
@@ -695,6 +698,6 @@ assert (text('word'),text('progress'))==('Reset 1','reset')
 r.trigger('next','click');r.trigger('back','click')
 assert (text('word'),text('progress'))==('Local again','reset')
 print('native-reference-passed')
-`, result.sourcePath, new URL('..', import.meta.url).pathname], { encoding: 'utf8' });
+`, result.sourcePath, fileURLToPath(new URL('..', import.meta.url))], { encoding: 'utf8' });
     assert.equal(checked.status, 0, checked.stderr || checked.stdout);
 });

@@ -1,7 +1,10 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { sha256 } from './document.mjs';
+const digest = data => createHash('sha256').update(data).digest('hex');
+// Windows checkouts may materialize text as CRLF; manifests hash the LF form.
+const normalizedDigest = data => digest(Buffer.from(data.toString('binary').replace(/\r\n/g, '\n'), 'binary'));
 export const referencePackRoot = join(dirname(fileURLToPath(import.meta.url)), '..', 'examples/studio/reference-packs');
 const fail = (code, message) => { throw Object.assign(new Error(message), { code }); };
 const member = (root, path) => {
@@ -20,7 +23,10 @@ function readPack(id, root) {
         fail('E_REFERENCE_PACK', `参考包清单不完整：${id}`);
     for (const [file, hash] of Object.entries(manifest.files || {})) {
         const path = member(directory, file);
-        if (!existsSync(path) || sha256(readFileSync(path)) !== hash)
+        if (!existsSync(path))
+            fail('E_REFERENCE_PACK_DRIFT', `参考包资源已变化或缺失：${id}/${file}`);
+        const data = readFileSync(path);
+        if (digest(data) !== hash && normalizedDigest(data) !== hash)
             fail('E_REFERENCE_PACK_DRIFT', `参考包资源已变化或缺失：${id}/${file}`);
     }
     if (!manifest.files?.[manifest.source])

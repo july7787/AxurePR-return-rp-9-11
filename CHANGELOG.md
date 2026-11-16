@@ -1,7 +1,12 @@
 # Changelog
 
-## Unreleased
+## 1.4.4 — 2026-11-16
 
+- Windows 全功能回归：`npm test` 20/20、parity 23/23、studio-ai 153 项（147 通过、6 项平台跳过）、15 个 Studio 套件及其余非 GUI 门禁全部通过；`node build.mjs` 重建 248 个文件后工作区差异保持不变。
+- 修复参考包清单校验在 Windows 上误报 `E_REFERENCE_PACK_DRIFT`：文本按 LF 归一化后比对，二进制仍按原始字节；同步覆盖标杆文件校验。
+- 修复 `studio-sync-native` 在 Windows 上向 Python 子进程传入 `/E:/...` 路径导致 `rp_language` 无法导入；异步操作段改为 POSIX 平台执行，同步流程保持完整验证。
+- 修复 Studio 异步操作在 win32 上泄漏测试服务的问题，并统一按平台跳过依赖 POSIX 进程组的用例。
+- 发布包与分享包按 1.4.4 重新生成，`release-manifest.json` 覆盖全部公开源码与 TypeScript 构建产物。
 - 仓库更名为 `AxurePR-return-rp`，便于按 Axure / AxurePR 搜索；旧地址由 GitHub 重定向。
 - README 中英文重做：新增 30 秒概览、与通用 UI 生成器的对比、端到端工作流插图、RP 9 / RP 11 能力表、Windows 安装步骤、常见问题与项目结构；更新徽章、克隆地址与 MCP 配置路径。
 - 同步更新贡献指南、`package.json` 仓库地址与原生自定义样式文档中的 issue 链接。
