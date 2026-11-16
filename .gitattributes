@@ -1,0 +1,4 @@
+# .mjs/.js are build outputs of .mts/.ts sources (see build.mjs).
+# Keep GitHub language statistics source-first instead of double-counting.
+*.mjs linguist-generated=true
+*.js  linguist-generated=true
