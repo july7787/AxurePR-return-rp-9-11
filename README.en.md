@@ -179,6 +179,15 @@ npm ci
 
 You can also download `return_rp-<version>-share.zip` from [Releases](https://github.com/karlmoriaty/AxurePR-return-rp/releases) and run `npm ci --ignore-scripts` inside the extracted directory. The share package omits tests and private assets; native generation still needs local Axure and a blank project you saved yourself.
 
+For CLI / MCP only, run directly from npm without cloning the repository (native generation and image processing still need the Python dependencies above):
+
+```sh
+npx -y -p return_rp return_rp --help
+npx -y -p return_rp return_rp-mcp
+```
+
+In an MCP client, use `"command": "npx", "args": ["-y", "-p", "return_rp", "return_rp-mcp"]`.
+
 > MCP tool discovery needs the optional `@modelcontextprotocol/sdk` dependency, which `npm ci` installs. The CLI works without it; when missing, MCP startup tells you to run `npm ci --ignore-scripts` instead of silently returning an empty tool list.
 
 <details>

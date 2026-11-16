@@ -179,6 +179,15 @@ npm ci
 
 也可以直接从 [Releases](https://github.com/karlmoriaty/AxurePR-return-rp/releases) 下载 `return_rp-<version>-share.zip`，解压后在目录内执行 `npm ci --ignore-scripts`。分享包不含测试与私有素材；原生生成仍需要本机 Axure 和一份你自己保存的空白工程。
 
+只用 CLI / MCP 时，也可以直接从 npm 运行，无需克隆仓库（原生生成与图片处理仍需要上面的 Python 依赖）：
+
+```sh
+npx -y -p return_rp return_rp --help
+npx -y -p return_rp return_rp-mcp
+```
+
+MCP 客户端配置可以直接写 `"command": "npx", "args": ["-y", "-p", "return_rp", "return_rp-mcp"]`。
+
 > MCP 工具列表依赖可选依赖 `@modelcontextprotocol/sdk`（`npm ci` 会一并安装）。只跑 CLI 不装也能用；缺少依赖时 MCP 启动会提示在项目目录执行 `npm ci --ignore-scripts`，而不是静默返回空工具列表。
 
 <details>

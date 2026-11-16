@@ -1,0 +1,8 @@
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties: {}
+    additionalProperties: false
+  commandFunction: |-
+    (config) => ({ command: 'npx', args: ['-y', '-p', 'return_rp@1.4.4', 'return_rp-mcp'] })
