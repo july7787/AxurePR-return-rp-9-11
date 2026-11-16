@@ -43,7 +43,11 @@ function serveStaticDir(rootDir) {
       const addr = srv.address();
       resolve({
         url: `http://127.0.0.1:${addr.port}`,
-        close: () => new Promise(r => srv.close(() => r())),
+        close: () => new Promise(r => {
+          // Chrome can hold keep-alive sockets; close them so server.close() cannot wait forever.
+          srv.closeAllConnections?.();
+          srv.close(() => r());
+        }),
       });
     });
   });
