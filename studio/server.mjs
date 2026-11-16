@@ -222,16 +222,16 @@ export class StudioServer {
                 return this.managedPage;
             }
             await this.managedPage.navigate(`${this.url}/?clientId=managed_renderer`);
-            await this.managedPage.waitForFunction('Boolean(window.__STUDIO_APP__ && window.__STUDIO_RENDERED_REVISION__ >= 1)', 10000);
+            await this.managedPage.waitForFunction('Boolean(window.__STUDIO_APP__ && window.__STUDIO_RENDERED_REVISION__ >= 1 && window.__STUDIO_APP__.state.bootstrapped)', 10000);
             return this.managedPage;
         }
         this.managedChrome = await launchChrome({ headless: true, width: 1440, height: 1050, dpr: 2 });
         this.managedPage = await this.managedChrome.openPage(`${this.url}/?clientId=managed_renderer`);
         try {
-            await this.managedPage.waitForFunction('Boolean(window.__STUDIO_APP__ && window.__STUDIO_RENDERED_REVISION__ >= 1)', 10000);
+            await this.managedPage.waitForFunction('Boolean(window.__STUDIO_APP__ && window.__STUDIO_RENDERED_REVISION__ >= 1 && window.__STUDIO_APP__.state.bootstrapped)', 10000);
         }
         catch (error) {
-            const state = await this.managedPage.evaluate('({url:location.href,ready:document.readyState,app:!!window.__STUDIO_APP__,revision:window.__STUDIO_RENDERED_REVISION__})').catch(() => null);
+            const state = await this.managedPage.evaluate('({url:location.href,ready:document.readyState,app:!!window.__STUDIO_APP__,revision:window.__STUDIO_RENDERED_REVISION__,bootstrapped:!!window.__STUDIO_APP__?.state?.bootstrapped})').catch(() => null);
             throw Object.assign(new Error(`画布初始化未完成：${JSON.stringify({ state, errors: this.managedPage.scriptErrors })}`), { code: 'E_RENDERER_STARTUP', stage: 'browser-initialization', cause: error });
         }
         return this.managedPage;
@@ -1280,7 +1280,7 @@ export class StudioServer {
                         try {
                             // 把 managed 页恢复成干净的设计态渲染页，不把交互运行态留给后续渲染确认/截图
                             await page.navigate(`${this.url}/?clientId=managed_renderer`);
-                            await page.waitForFunction('Boolean(window.__STUDIO_APP__ && window.__STUDIO_RENDERED_REVISION__ >= 1)', 10000);
+                            await page.waitForFunction('Boolean(window.__STUDIO_APP__ && window.__STUDIO_RENDERED_REVISION__ >= 1 && window.__STUDIO_APP__.state.bootstrapped)', 10000);
                         }
                         catch { /* best effort：恢复失败不掩盖场景结论 */ }
                         if (!browser.passed) {

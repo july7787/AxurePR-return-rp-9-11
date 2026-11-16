@@ -55,7 +55,9 @@ test('grid geometry reaches browser DOM after column edits and matches the autho
     const { studio } = await startStudioServer({ projectDir: join(dir, 'project'), sourcePath: path, port: 0 });
     t.after(() => studio.close());
     const page = await studio.ensureManagedBrowserPage();
+    assert.equal(await page.evaluate('window.__STUDIO_APP__.state.bootstrapped'), true);
     await page.evaluate(`window.__STUDIO_APP__.setPanZoom(340,80,0.75)`);
+    assert.equal(await page.evaluate('window.__STUDIO_APP__.state.zoom'), 0.75);
     const check = async () => { const actual = await page.evaluate(`(()=>{const root=document.querySelector('[data-node-id="grid"]').getBoundingClientRect();return ['wide','tall','small'].map(id=>{const r=document.querySelector('[data-node-id="'+id+'"]').getBoundingClientRect();return{id,x:(r.x-root.x)/0.75,y:(r.y-root.y)/0.75,w:r.width/0.75,h:r.height/0.75}})})()`); for (const item of actual) {
         const expected = node(studio.scene, item.id), parent = node(studio.scene, 'grid');
         for (const key of ['x', 'y', 'w', 'h'])

@@ -19,6 +19,7 @@ const state = {
     zoom: 1,
     panX: 40,
     panY: 40,
+    bootstrapped: false,
     dragSession: null,
     snapGuides: [],
     altPressed: false,
@@ -4223,6 +4224,8 @@ async function bootstrap() {
     await applyServerSnapshot(data);
     connectSseStream();
     fitWorkspace(true);
+    // Browser tests set pan/zoom after startup; fitWorkspace must finish first.
+    state.bootstrapped = true;
 }
 window.__STUDIO_APP__ = {
     state,

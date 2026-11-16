@@ -27,6 +27,15 @@ export function findChromeExecutable() {
   throw new Error('未找到本机 Google Chrome / Chromium 可执行文件');
 }
 
+async function resolveWebSocketClient() {
+  try {
+    const mod = await import('ws');
+    if (mod?.WebSocket) return mod.WebSocket;
+  } catch {}
+  if (globalThis.WebSocket) return globalThis.WebSocket;
+  throw new Error('缺少 WebSocket 客户端：请安装可选依赖 ws（或使用 Node >= 22 内置 WebSocket）');
+}
+
 export class CdpSession {
   constructor(ws, { onClose = null } = {}) {
     this.ws = ws;
@@ -242,19 +251,55 @@ export async function launchChrome({ headless = true, width = 1440, height = 900
   const activeSessions = new Set();
 
   async function openPage(url = 'about:blank') {
-    const res = await fetch(`http://127.0.0.1:${debugPort}/json/new?about:blank`, { method: 'PUT' });
-    const target = await res.json();
-    const WebSocketClient = globalThis.WebSocket || (await import('ws')).WebSocket;
+    let target;
+    try {
+      const res = await fetch(`http://127.0.0.1:${debugPort}/json/new?about:blank`, {
+        method: 'PUT',
+        signal: AbortSignal.timeout(15000),
+      });
+      target = await res.json();
+    } catch (error) {
+      throw new Error(`CDP target creation failed on port ${debugPort}: ${error?.message || error}`);
+    }
+    // Prefer the `ws` package: Node 22's global WebSocket can stall during the
+    // opening handshake against Chrome's DevTools endpoint.
+    const WebSocketClient = await resolveWebSocketClient();
     const ws = new WebSocketClient(target.webSocketDebuggerUrl);
-    await new Promise((resolve, reject) => {
-      ws.addEventListener('open', resolve, { once: true });
-      ws.addEventListener('error', reject, { once: true });
-    });
+    try {
+      await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+          cleanup();
+          try { ws.close(); } catch {}
+          reject(new Error(`CDP WebSocket open timeout (15000ms): ${target.webSocketDebuggerUrl}`));
+        }, 15000);
+        const onOpen = () => { cleanup(); resolve(); };
+        const onError = event => {
+          cleanup();
+          reject(new Error(`CDP WebSocket open failed: ${event?.message || event?.error?.message || 'unknown error'}`));
+        };
+        const cleanup = () => {
+          clearTimeout(timer);
+          ws.removeEventListener('open', onOpen);
+          ws.removeEventListener('error', onError);
+        };
+        ws.addEventListener('open', onOpen);
+        ws.addEventListener('error', onError);
+      });
+    } catch (error) {
+      if (target?.id && proc.exitCode === null) {
+        await fetch(`http://127.0.0.1:${debugPort}/json/close/${target.id}`, {
+          signal: AbortSignal.timeout(5000),
+        }).catch(() => {});
+      }
+      throw error;
+    }
     const session = new CdpSession(ws, {
       onClose: async () => {
         activeSessions.delete(session);
         if (target?.id && proc.exitCode === null) {
-          await fetch(`http://127.0.0.1:${debugPort}/json/close/${target.id}`).catch(() => {});
+          await fetch(`http://127.0.0.1:${debugPort}/json/close/${target.id}`, {
+            signal: AbortSignal.timeout(5000),
+          }).catch(() => {});
         }
       },
     });
