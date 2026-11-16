@@ -331,12 +331,13 @@ test('G01-3: revision/contentHash binding, stale baseRevision rejection, registr
     assert.ok(syncExp.registration?.manifestSha256);
 
     // 2. Advance project to r2
-    await studioHandlers.studio_apply_commands({
+    const advance = await studioHandlers.studio_apply_commands({
       port: server.info.port,
       baseRevision: 1,
       idempotencyKey: 'g01-advance-r2',
       commands: [{ type: 'setText', pageId: 'home', nodeId: 'title', text: '版本二' }],
     });
+    assert.equal(advance.ok, true, JSON.stringify(advance));
 
     // 3. Stale baseRevision (r1 when server is at r2) must reject with E_STALE_REVISION
     const staleMcpRes = await studioHandlers.studio_export_code({
@@ -414,7 +415,7 @@ test('G01-3: revision/contentHash binding, stale baseRevision rejection, registr
         requestKey: 'g01-async-export-r2',
         baseRevision: 2,
       });
-      assert.ok(asyncOp.id.startsWith('op_'));
+      assert.ok(asyncOp.id?.startsWith('op_'), `async export start failed: ${JSON.stringify(asyncOp)}`);
       let opState = asyncOp;
       for (let i = 0; i < 40 && !['succeeded', 'failed'].includes(opState.status); i++) {
         await new Promise(r => setTimeout(r, 150));
