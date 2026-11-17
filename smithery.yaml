@@ -5,4 +5,4 @@ startCommand:
     properties: {}
     additionalProperties: false
   commandFunction: |-
-    (config) => ({ command: 'npx', args: ['-y', '-p', 'return_rp@1.4.4', 'return_rp-mcp'] })
+    (config) => ({ command: 'npx', args: ['-y', '-p', 'return_rp@1.4.5', 'return_rp-mcp'] })

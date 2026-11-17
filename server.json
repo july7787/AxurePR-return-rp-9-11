@@ -3,7 +3,7 @@
   "name": "io.github.karlmoriaty/return_rp",
   "title": "return_rp",
   "description": "Axure RP 9/11 toolkit and MCP server: read, edit, and generate native .rp projects.",
-  "version": "1.4.4",
+  "version": "1.4.5",
   "websiteUrl": "https://github.com/karlmoriaty/AxurePR-return-rp",
   "repository": {
     "url": "https://github.com/karlmoriaty/AxurePR-return-rp",
@@ -15,7 +15,7 @@
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "return_rp",
-      "version": "1.4.4",
+      "version": "1.4.5",
       "transport": {
         "type": "stdio"
       }

@@ -1,6 +1,6 @@
 FROM node:20-slim
 
 WORKDIR /app
-RUN npm install -g return_rp@1.4.4
+RUN npm install -g return_rp@1.4.5
 
 CMD ["return_rp-mcp"]
