@@ -1,7 +1,5 @@
 <div align="center">
 
-<img src="assets/readme/cover.svg" alt="return_rp · AI-native canvas. Editable Axure RP 9 / RP 11 output." width="100%">
-
 # Give AI room to design.<br>Bring the work into Axure.
 
 **Author in RP/1. Explore with your agent. Refine together. Keep an editable `.rp`.**
@@ -13,15 +11,6 @@
 [![Release](https://img.shields.io/github/v/release/karlmoriaty/AxurePR-return-rp?style=flat-square&label=release&labelColor=202825&color=D5FF70)](https://github.com/karlmoriaty/AxurePR-return-rp/releases) [![Checks](https://img.shields.io/github/actions/workflow/status/karlmoriaty/AxurePR-return-rp/test.yml?branch=main&style=flat-square&label=checks&labelColor=202825&color=637E51)](https://github.com/karlmoriaty/AxurePR-return-rp/actions) [![Axure RP 9 | 11](https://img.shields.io/badge/Axure_RP-9_%7C_11-637E51?style=flat-square&labelColor=202825)](docs/version-parity.md) [![MIT](https://img.shields.io/badge/MIT-open_source-D5FF70?style=flat-square&labelColor=202825)](LICENSE)
 
 </div>
-
-<br>
-
-<img src="assets/readme/showcase.png" alt="QIYU: real generated discovery, species details and journal screens from a nine-page native prototype" width="100%">
-
-<p align="center"><b>QIYU</b>　Discover a bird. Get to know it. Keep the encounter.</p>
-<p align="center"><sub>Nine-page native prototype · Separate text, buttons and inputs · Demo identification and statistics · <a href="assets/readme/README.md">Case notes and credits</a></sub></p>
-
-<br>
 
 <a id="overview"></a>
 
@@ -53,8 +42,6 @@
 
 ## 01　One pipeline, from idea to Axure.
 
-<img src="assets/readme/pipeline.svg" alt="Workflow: brief or screenshot → RP/1 source → Studio canvas → native .rp → Axure and browser" width="100%">
-
 1. **Write intent as source.** Screenshots go through the tracing pipeline; briefs and PRDs become RP/1 directly. Pages, components, variables and interactions live in one text file.
 2. **Refine on the canvas.** Your agent builds the first draft; you select, edit text and adjust layouts. Hand a local area back to the agent to explore another direction.
 3. **Verify before delivery.** Real screenshots, interaction scenarios and structure checks run separately so navigation, states and save/reopen behavior are confirmed.
@@ -67,8 +54,6 @@
 ## 02　Make room for refinement.
 
 Studio is a free canvas for people and agents. Let AI build the first draft, then select, edit text and adjust layouts directly. Hand a small part back to your agent and explore another direction.
-
-<img src="assets/readme/studio.png" alt="The real Studio editor: a second QIYU design, independent layers, a selected text object and editable geometry" width="100%">
 
 **AI drafts.** Author through RP/1 or commands; query layers and make targeted changes.<br>
 **You refine.** Double-click text, Shift-drag a marquee, hold Option / Alt to measure, undo and redo.<br>
