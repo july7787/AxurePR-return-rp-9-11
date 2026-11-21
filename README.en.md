@@ -48,7 +48,7 @@ Turn a screenshot, a brief or RP/1 source into a native `.rp` you can keep editi
 ## One pipeline, from idea to Axure
 
 ```mermaid
-flowchart LR
+flowchart TD
   A["Screenshot / brief / PRD"] --> B["RP/1 design source"]
   B --> C["Studio canvas"]
   C --> D["Native .rp"]

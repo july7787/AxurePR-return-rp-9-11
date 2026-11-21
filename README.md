@@ -48,7 +48,7 @@
 ## 从想法到 Axure，只有一条链路
 
 ```mermaid
-flowchart LR
+flowchart TD
   A["截图 / 需求 / PRD"] --> B["RP/1 设计源码"]
   B --> C["Studio 画布"]
   C --> D["原生 .rp"]
