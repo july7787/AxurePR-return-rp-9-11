@@ -1,7 +1,5 @@
 <div align="center">
 
-<img src="assets/readme/hero-canvas.jpg" alt="return_rp: a native design canvas shared by a person and an AI agent" width="100%">
-
 <br>
 
 # return_rp
@@ -67,8 +65,6 @@ flowchart TD
 <a id="studio"></a>
 
 ## Studio: a canvas both people and agents can edit
-
-<img src="assets/readme/studio-canvas.jpg" alt="Studio canvas illustration: layers, artboards, selection and properties" width="100%">
 
 **AI drafts.** Author through RP/1 or commands; query layers and make targeted changes.<br>
 **You refine.** Double-click text, Shift-drag a marquee, hold Option / Alt to measure, undo and redo.<br>
