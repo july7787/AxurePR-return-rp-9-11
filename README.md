@@ -1,8 +1,3 @@
-<div align="center">
-
-<img src="assets/readme/hero-canvas.jpg" alt="return_rp：一块由人和 AI 共同编辑的原生设计画布" width="100%">
-
-<br>
 
 # return_rp
 
@@ -67,8 +62,6 @@ flowchart TD
 <a id="studio"></a>
 
 ## Studio：一块人和 AI 都能编辑的画布
-
-<img src="assets/readme/studio-canvas.jpg" alt="Studio 画布示意：图层、画板、选择框与属性面板" width="100%">
 
 **AI 起稿。** 通过 RP/1 或命令创作，按图层、语义和范围查询，局部改稿。<br>
 **人来精修。** 双击改字、Shift 框选、Option / Alt 悬停测距，撤销重做。<br>
